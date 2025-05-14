@@ -1,32 +1,34 @@
-# forgot_password.py
+# password_recovery_page.py
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from .base_page import BasePage
 
-
 class ForgotPasswordPage(BasePage):
-    RESTORE_PASSWORD_BUTTON = (By.XPATH, "//a[text()='Восстановить пароль']")  # Кнопка на странице логина
-    EMAIL_INPUT = (By.XPATH, "//input[@name='name']")  # Поле ввода email
-    SUBMIT_BUTTON = (By.XPATH, "//button[text()='Восстановить']")  # Кнопка подтверждения
-    SHOW_HIDE_PASSWORD_BUTTON = (By.XPATH, "//div[contains(@class, 'input__icon')]")  # Глазик
+    EMAIL_INPUT = (By.XPATH, "//input[@name='name']")
+    SUBMIT_BUTTON = (By.XPATH, "//button[contains(text(), 'Восстановить')]")
+    SUCCESS_MESSAGE = (By.XPATH, "//div[contains(text(), 'Инструкции отправлены')]")
+    SHOW_HIDE_BUTTON = (By.CSS_SELECTOR, "div.input__icon > svg")
 
-    def go_to_restore_password_page(self):
-        """Переход на страницу восстановления пароля"""
-        self.find_element(self.RESTORE_PASSWORD_BUTTON).click()
-        assert "forgot-password" in self.driver.current_url, "Не перешли на страницу восстановления пароля!"
+    def go_to_site(self, path=""):
+        self.driver.get(f"{self.base_url}{path}")
+        self._wait(self.EMAIL_INPUT)
 
-    def enter_email_and_submit(self, email):
-        """Ввод email и отправка формы"""
-        self.find_element(self.EMAIL_INPUT).send_keys(email)
-        self.find_element(self.SUBMIT_BUTTON).click()
+    def enter_email(self, email: str):
+        self.fill_field(self.EMAIL_INPUT, email)
 
-    def check_password_visibility_toggle(self):
-        """Проверка подсветки поля при клике на 'глазик'"""
-        password_input = self.find_element(self.EMAIL_INPUT)
-        initial_class = password_input.get_attribute("class")
+    def submit_form(self):
+        self.click_element(self.SUBMIT_BUTTON)
+        WebDriverWait(self.driver, 15).until(
+            EC.visibility_of_element_located(self.SUCCESS_MESSAGE)
+        )
 
-        self.find_element(self.SHOW_HIDE_PASSWORD_BUTTON).click()
-        updated_class = password_input.get_attribute("class")
+    def is_success_message_displayed(self) -> bool:
+        return self.is_element_present(self.SUCCESS_MESSAGE)
 
-        assert "input_status_active" in updated_class, "Поле не подсвечивается при активации!"
-        assert initial_class != updated_class, "Класс поля не изменился!"
+    def toggle_password_visibility(self):
+        self.click_element(self.SHOW_HIDE_BUTTON)
+
+    def is_password_field_highlighted(self) -> bool:
+        return "input_status_active" in self._wait(self.EMAIL_INPUT).get_attribute("class")
