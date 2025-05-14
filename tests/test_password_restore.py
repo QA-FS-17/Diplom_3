@@ -3,7 +3,7 @@
 import allure
 import pytest
 from pages.login_page import LoginPage
-from pages.password_recovery_page import ForgotPasswordPage
+from pages.password_restore_page import ForgotPasswordPage
 
 @allure.feature("Восстановление пароля")
 class TestPasswordRestore:
