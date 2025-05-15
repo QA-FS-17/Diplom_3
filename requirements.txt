@@ -6,3 +6,4 @@ webdriver-manager==3.8.5
 requests==2.32.0
 allure-python-commons~=2.9.45
 undetected-chromedriver~=3.5.5
+Faker~=37.1.0

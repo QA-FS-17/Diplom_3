@@ -1,15 +1,16 @@
 # password_restore_page.py
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from .base_page import BasePage
+from selenium.common.exceptions import NoSuchElementException
+
 
 class ForgotPasswordPage(BasePage):
-    EMAIL_INPUT = (By.XPATH, "//input[@name='name']")
+    EMAIL_INPUT = (By.CSS_SELECTOR, "input.text.input__textfield.text_type_main-default")
     SUBMIT_BUTTON = (By.XPATH, "//button[contains(text(), 'Восстановить')]")
-    SUCCESS_MESSAGE = (By.XPATH, "//div[contains(text(), 'Инструкции отправлены')]")
-    SHOW_HIDE_BUTTON = (By.CSS_SELECTOR, "div.input__icon > svg")
+    SHOW_HIDE_BUTTON = (By.CSS_SELECTOR, "div[class*='input__icon'] svg")
+    INPUT_CONTAINER = (By.CSS_SELECTOR, ".input")
+    PASSWORD_FIELD = (By.CSS_SELECTOR, "input[type='password']")
 
     def go_to_site(self, path=""):
         self.driver.get(f"{self.base_url}{path}")
@@ -18,17 +19,30 @@ class ForgotPasswordPage(BasePage):
     def enter_email(self, email: str):
         self.fill_field(self.EMAIL_INPUT, email)
 
-    def submit_form(self):
-        self.click_element(self.SUBMIT_BUTTON)
-        WebDriverWait(self.driver, 15).until(
-            EC.visibility_of_element_located(self.SUCCESS_MESSAGE)
-        )
-
-    def is_success_message_displayed(self) -> bool:
-        return self.is_element_present(self.SUCCESS_MESSAGE)
-
     def toggle_password_visibility(self):
         self.click_element(self.SHOW_HIDE_BUTTON)
 
     def is_password_field_highlighted(self) -> bool:
-        return "input_status_active" in self._wait(self.EMAIL_INPUT).get_attribute("class")
+        # Находим контейнер поля ввода
+        input_container = self.driver.find_element(By.CSS_SELECTOR, ".input")
+
+        # Получаем текущий цвет рамки
+        current_border = input_container.value_of_css_property("border-color")
+
+        # Сравниваем с цветом подсветки из CSS-переменной
+        return current_border == "rgb(76, 76, 255)"  # #4c4cff в RGB
+
+    def submit_form(self):
+        self.click_element(self.SUBMIT_BUTTON)
+
+    def is_eye_icon_visible(self):
+        return self.driver.find_element(*self.SHOW_HIDE_BUTTON).is_displayed()
+
+    def get_border_color(self):
+        return self.driver.find_element(*self.INPUT_CONTAINER).value_of_css_property("border-color")
+
+    def is_password_field_displayed(self) -> bool:
+        try:
+            return self.driver.find_element(*self.PASSWORD_FIELD).is_displayed()
+        except NoSuchElementException:
+            return False
