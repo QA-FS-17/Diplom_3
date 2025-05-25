@@ -3,5 +3,5 @@
 
 Запуск тестов
 
-pytest tests/test_password_restore.py --alluredir=./allure-results -v
+pytest tests/ --alluredir=allure-results
 allure serve allure-results
