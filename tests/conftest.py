@@ -1,13 +1,12 @@
 # conftest.py
 
-import random
 import allure
 import pytest
 import requests
-import undetected_chromedriver as uc
+import uc
 from selenium import webdriver
-from config import BASE_URL
-from pages.login_page import LoginPage
+from config import BASE_URL, API_REGISTER, API_LOGIN, API_USER
+from data import TestUser
 
 
 @pytest.fixture(params=["chrome", "firefox"])
@@ -45,127 +44,40 @@ def driver(request):
                 driver.quit()
             except Exception as e:
                 allure.attach(str(e), name="Ошибка закрытия драйвера")
-                print(f"Ошибка при закрытии драйвера: {str(e)}")
 
 
 @pytest.fixture
-def api_client():
-    """Фикстура для HTTP-клиента"""
-    client = requests.Session()
-    client.headers = {"Content-Type": "application/json"}
-    yield client
-    client.close()
+def test_user():
+    return TestUser()
 
-@pytest.fixture(scope="function")
-def clean_orders(api_client, login):
-    """Очистка заказов через API"""
-    yield
-    try:
-        token = api_client.cookies.get("accessToken")
-        if token:
-            response = api_client.post(
-                f"{BASE_URL}/api/orders/clear",
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            assert response.status_code == 200, "Не удалось очистить заказы"
-    except Exception as e:
-        allure.attach(str(e), name="Ошибка очистки")
 
 @pytest.fixture
-def register_user(api_client):
-    """Фикстура для регистрации пользователя через API"""
-    user = {
-        "email": f"test{random.randint(1000, 9999)}@test.com",
-        "password": "Password123",
-        "name": "Test User"
-    }
-
-    # Регистрация
-    response = api_client.post(f"{BASE_URL}/api/auth/register", json=user)
-    assert response.status_code == 200
-
-    yield user
-
-    # Удаление
-    login_response = api_client.post(
-        f"{BASE_URL}/api/auth/login",
-        json={"email": user["email"], "password": user["password"]}
+def registered_user(driver, test_user):
+    from pages.register_page import RegisterPage
+    register_page = RegisterPage(driver)
+    register_page.open().register(
+        name=test_user.name,
+        email=test_user.email,
+        password=test_user.password
     )
-    if login_response.status_code == 200:
-        token = login_response.json()["accessToken"]
-        api_client.delete(
-            f"{BASE_URL}/api/auth/user",
-            headers={"Authorization": token}
-        )
+    yield test_user
+
+    # Удаление через API
+    login_response = requests.post(
+        API_LOGIN,
+        json={"email": test_user.email, "password": test_user.password}
+    )
+    token = login_response.json()["accessToken"]
+    requests.delete(
+        API_USER,
+        headers={"Authorization": f"Bearer {token}"}
+    )
 
 
 @pytest.fixture
-def login(driver, register_user):
+def authorized_user(driver, registered_user):
+    from pages.login_page import LoginPage
     login_page = LoginPage(driver)
-    login_page.open()
-    login_page.login(register_user["email"], register_user["password"])
-
-    # Возвращаем токен для использования в API
-    yield {
-        "token": login_page.get_auth_token(),
-        "email": register_user["email"]
-    }
-
-    # Очистка
+    login_page.open().login(registered_user.email, registered_user.password)
+    yield driver
     requests.post(f"{BASE_URL}/api/auth/logout")
-
-
-# Остальные фикстуры
-@pytest.fixture
-def main_page(driver):
-    from pages.main_page import MainPage
-    return MainPage(driver)
-
-@pytest.fixture
-def order_feed_page(driver):
-    from pages.order_feed_page import OrderFeedPage
-    return OrderFeedPage(driver)
-
-@pytest.fixture
-def profile_page(driver):
-    from pages.profile_page import ProfilePage
-    return ProfilePage(driver)
-
-
-@pytest.fixture
-def test_user(api_client):
-    """Фикстура для тестового пользователя"""
-    user_data = {
-        "email": f"test{random.randint(1000, 9999)}@test.com",
-        "password": "Password123",
-        "name": "Test User"
-    }
-
-    # Регистрация
-    response = api_client.post(
-        f"{BASE_URL}/api/auth/register",
-        json=user_data
-    )
-    assert response.status_code == 200
-
-    yield user_data
-
-    # Удаление
-    login_response = api_client.post(
-        f"{BASE_URL}/api/auth/login",
-        json={"email": user_data["email"], "password": user_data["password"]}
-    )
-    if login_response.status_code == 200:
-        token = login_response.json().get("accessToken")
-        api_client.delete(
-            f"{BASE_URL}/api/auth/user",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-
-@pytest.fixture
-def ui_auth_user(driver, register_user):
-    """Фикстура для авторизации пользователя через UI"""
-    login_page = LoginPage(driver)
-    login_page.open()
-    login_page.login(register_user["email"], register_user["password"])
-    yield

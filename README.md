@@ -1,7 +1,7 @@
 # Diplom_3
-Тестирование веб-приложения Stellar Burgers с помощью паттерна Page Object Model. 
+Тестирование веб-приложения Stellar Burgers с помощью паттерна Page Object Model.
 
-Запуск тестов
-
+## Запуск тестов
+```bash
 pytest tests/ --alluredir=allure-results
 allure serve allure-results
