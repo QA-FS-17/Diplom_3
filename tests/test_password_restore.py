@@ -1,26 +1,37 @@
 # test_password_restore.py
 
 import allure
+from pages.login_page import LoginPage
 from pages.password_restore_page import PasswordRestorePage
+
 
 @allure.feature("Восстановление пароля")
 class TestPasswordRestore:
-    @allure.title("Переход на страницу восстановления пароля со страницы регистрации")
-    def test_navigate_to_restore_from_register(self, driver):
-        from pages.register_page import RegisterPage
-        register_page = RegisterPage(driver).open()
-        register_page.go_to_login()
-        assert "login" in driver.current_url
+    @allure.story("Переход на страницу восстановления пароля")
+    def test_go_to_password_restore_page(self, driver):
+        login_page = LoginPage(driver)
+        login_page.open()
+        login_page.go_to_password_restore()
 
-    @allure.title("Восстановление пароля")
-    def test_password_restoration(self, driver, registered_user):
-        PasswordRestorePage(driver).open().restore_password(registered_user.email)
-        assert "reset-password" in driver.current_url
+        assert "forgot-password" in driver.current_url, "Не удалось перейти на страницу восстановления пароля"
 
-    @allure.title("Переключение видимости пароля")
-    def test_password_visibility_toggle(self, driver):
-        restore_page = PasswordRestorePage(driver).open()
+    @allure.story("Восстановление пароля с валидным email")
+    def test_restore_password_with_valid_email(self, driver, test_user):
+        login_page = LoginPage(driver)
+        restore_page = PasswordRestorePage(driver)
 
-        with allure.step("Проверить активность поля ввода"):
-            restore_page.toggle_password_visibility()
-            assert restore_page.is_input_active()
+        login_page.open()
+        login_page.go_to_password_restore()
+        restore_page.restore_password(test_user["email"])
+
+        assert "reset-password" in driver.current_url, "Не удалось отправить форму восстановления"
+
+    @allure.story("Подсветка поля пароля при клике на иконку")
+    def test_password_field_highlight(self, driver):
+        restore_page = PasswordRestorePage(driver)
+        restore_page.open()
+
+        restore_page.toggle_password_visibility()
+        is_highlighted = restore_page.is_password_field_highlighted()
+
+        assert is_highlighted, "Поле пароля не подсвечивается при активации"

@@ -4,22 +4,30 @@ from selenium.webdriver.common.by import By
 
 
 class MainPageLocators:
-    # Header
-    CONSTRUCTOR_BUTTON = (By.XPATH, "//p[text()='Конструктор']/parent::a")
-    ORDER_FEED_BUTTON = (By.XPATH, "//p[text()='Лента заказов']/parent::a")
-    PERSONAL_ACCOUNT_BUTTON = (By.XPATH, "//p[text()='Личный Кабинет']/parent::a")
+    # Кнопки навигации
+    CONSTRUCTOR_BUTTON = (By.XPATH, "//p[text()='Конструктор']/..")
+    ORDER_FEED_BUTTON = (By.XPATH, "//p[text()='Лента заказов']/..")
+    PERSONAL_ACCOUNT_BUTTON = (By.XPATH, "//p[text()='Личный Кабинет']/..")
 
-    # Ingredients
+    # Разделы ингредиентов
+    INGREDIENTS_SECTION = (By.XPATH, "//section[contains(@class, 'BurgerIngredients_ingredients')]")
     BUN_SECTION = (By.XPATH, "//h2[text()='Булки']/..")
     SAUCE_SECTION = (By.XPATH, "//h2[text()='Соусы']/..")
-    FILLING_SECTION = (By.XPATH, "//h2[text()='Начинки']/..")
-    INGREDIENT_ITEM = (By.CSS_SELECTOR, "[class^=BurgerIngredient_ingredient]")
+    MAIN_SECTION = (By.XPATH, "//h2[text()='Начинки']/..")
 
-    # Constructor
-    CONSTRUCTOR_AREA = (By.CSS_SELECTOR, "[class^=BurgerConstructor_basket]")
-    ORDER_BUTTON = (By.XPATH, "//button[text()='Оформить заказ']")
+    # Элементы ингредиентов
+    INGREDIENT_ITEM = (By.XPATH, "//div[contains(@class, 'BurgerIngredient_ingredient')]")
+    INGREDIENT_COUNTER = (By.XPATH, ".//div[contains(@class, 'counter_counter__num')]")
 
-    # Modals
-    INGREDIENT_DETAILS_MODAL = (By.CSS_SELECTOR, "[class^=Modal_modal]")
-    MODAL_CLOSE_BUTTON = (By.CSS_SELECTOR, "[class^=Modal_modal] button")
-    ORDER_NUMBER = (By.CSS_SELECTOR, "[class^=Modal_orderNumber]")
+    # Конструктор
+    CONSTRUCTOR_AREA = (By.XPATH, "//section[contains(@class, 'BurgerConstructor_basket')]")
+    CONSTRUCTOR_SECTION = (By.XPATH, "//section[contains(@class, 'BurgerConstructor_container')]")
+    MAKE_ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
+
+    # Модальные окна
+    MODAL_WINDOW = (By.XPATH, "//div[contains(@class, 'Modal_modal__container')]")
+    MODAL_CLOSE_BUTTON = (By.XPATH, "//button[contains(@class, 'Modal_modal__close')]")
+    ORDER_NUMBER = (By.XPATH, "//p[contains(@class, 'text_type_digits-large')]")
+
+    # Прочие элементы
+    LOADER = (By.XPATH, "//div[contains(@class, 'loader')]")

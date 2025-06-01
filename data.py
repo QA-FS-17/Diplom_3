@@ -1,16 +1,21 @@
 # data.py
 
-import random
+TEST_INGREDIENTS = {
+    "bun": "61c0c5a71d1f82001bdaaa6d",  # Флюоресцентная булка
+    "sauce": "61c0c5a71d1f82001bdaaa72"  # Биокотлета
+}
+
 
 class TestUser:
-    @property
-    def email(self):
-        return f"test{random.randint(10000, 99999)}@example.com"
+    @staticmethod
+    def generate_test_email():
+        import uuid
+        return f"test_{uuid.uuid4().hex[:8]}@example.com"
 
     @property
-    def password(self):
-        return f"Pass{random.randint(1000, 9999)}"
-
-    @property
-    def name(self):
-        return f"User{random.randint(100, 999)}"
+    def valid_credentials(self):
+        return {
+            "email": self.generate_test_email(),
+            "password": "Password123",
+            "name": "Test User"
+        }

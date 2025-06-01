@@ -3,9 +3,12 @@
 from selenium.webdriver.common.by import By
 
 class ProfilePageLocators:
-    PROFILE_LINK = (By.XPATH, "//a[contains(@href, 'profile')]")
+    # Уникальные элементы профиля
+    PROFILE_FORM = (By.XPATH, "//div[contains(@class, 'Account_account')]")
+    NAME_INPUT = (By.XPATH, "//input[@name='name']")
+    EMAIL_INPUT = (By.XPATH, "//input[@name='email']")
+    SAVE_BUTTON = (By.XPATH, "//button[contains(text(), 'Сохранить')]")
     ORDER_HISTORY_LINK = (By.XPATH, "//a[contains(@href, 'order-history')]")
-    LOGOUT_BUTTON = (By.XPATH, "//button[text()='Выход']")
-    ORDER_HISTORY_ITEM = (By.CSS_SELECTOR, "[class^=OrderHistory_listItem]")
-    PROFILE_FORM = (By.CSS_SELECTOR, "[class^=Profile_profile]")
-    ORDER_NUMBER = (By.CSS_SELECTOR, ".order-number")
+    LOGOUT_BUTTON = (By.XPATH, "//button[contains(text(), 'Выход')]")
+    ORDER_HISTORY_ITEM = (By.XPATH, "//div[contains(@class, 'OrderHistory_link')]")
+    ORDER_HISTORY_NUMBER = (By.XPATH, ".//p[contains(@class, 'text_type_digits-default')]")
