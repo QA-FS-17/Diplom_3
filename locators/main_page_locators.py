@@ -2,12 +2,12 @@
 
 from selenium.webdriver.common.by import By
 
-
 class MainPageLocators:
     # Кнопки навигации
     CONSTRUCTOR_BUTTON = (By.XPATH, "//p[text()='Конструктор']/..")
     ORDER_FEED_BUTTON = (By.XPATH, "//p[text()='Лента заказов']/..")
     PERSONAL_ACCOUNT_BUTTON = (By.XPATH, "//p[text()='Личный Кабинет']/..")
+    LOGOUT_BUTTON = (By.XPATH, "//button[contains(text(), 'Выход')]")
 
     # Разделы ингредиентов
     INGREDIENTS_SECTION = (By.XPATH, "//section[contains(@class, 'BurgerIngredients_ingredients')]")
@@ -24,10 +24,18 @@ class MainPageLocators:
     CONSTRUCTOR_SECTION = (By.XPATH, "//section[contains(@class, 'BurgerConstructor_container')]")
     MAKE_ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
 
-    # Модальные окна
-    MODAL_WINDOW = (By.XPATH, "//div[contains(@class, 'Modal_modal__container')]")
-    MODAL_CLOSE_BUTTON = (By.XPATH, "//button[contains(@class, 'Modal_modal__close')]")
+    # Заказ
     ORDER_NUMBER = (By.XPATH, "//p[contains(@class, 'text_type_digits-large')]")
 
     # Прочие элементы
     LOADER = (By.XPATH, "//div[contains(@class, 'loader')]")
+
+    #INGREDIENT_ITEM = (By.XPATH, "//div[contains(@class, 'IngredientCard_card')][1]")
+    #INGREDIENT_COUNTER = (By.XPATH, ".//div[contains(@class, 'counter_counter')]")
+
+    CONSTRUCTOR_BTN = (By.XPATH, "//a[@href='/']")
+    ORDER_FEED_BTN = (By.XPATH, "//a[@href='/feed']")
+    PERSONAL_ACCOUNT_BTN = (By.XPATH, "//a[@href='/account']")
+    MAKE_ORDER_BTN = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
+    CREATE_ORDER_BTN = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
+    #ORDER_NUMBER = (By.XPATH, "//div[contains(@class, 'Modal_order')]//p[contains(@class, 'digits')]")

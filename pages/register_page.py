@@ -1,87 +1,51 @@
 # register_page.py
 
 import allure
+import logging
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.common.exceptions import (NoSuchElementException,
-                                        TimeoutException,
-                                        WebDriverException,
-                                        ElementClickInterceptedException)
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from .base_page import BasePage
 from locators.register_page_locators import RegisterPageLocators
+from config import config
+
+logger = logging.getLogger(__name__)
 
 
 class RegisterPage(BasePage):
-    def __init__(self, driver: WebDriver):
-        super().__init__(driver)
-        self._locators = RegisterPageLocators()
-        self._page_path = "register"
+    """Page Object для страницы регистрации пользователя."""
 
-    @property
-    def _base_url(self) -> str:
-        return "https://stellarburgers.nomoreparties.site"
+    def __init__(self, driver: WebDriver):
+        super().__init__(driver, config.REGISTER_URL)
+        self.locators = RegisterPageLocators()
 
     @allure.step("Открыть страницу регистрации")
-    def open(self) -> 'RegisterPage':
-        """Открывает страницу регистрации пользователя"""
-        try:
-            self.driver.get(f"{self._base_url}/{self._page_path}")
-            self._wait_until(lambda d: self._page_path in d.current_url)
-            return self
-        except TimeoutException as e:
-            raise RuntimeError(f"Таймаут при загрузке страницы регистрации: {str(e)}")
-        except WebDriverException as e:
-            raise RuntimeError(f"Ошибка браузера при открытии страницы регистрации: {str(e)}")
+    def open(self) -> None:
+        """Открывает страницу регистрации и проверяет её загрузку."""
+        super().open()
+        self.wait_until_visible(self.locators.REGISTER_FORM)
 
-    @allure.step("Зарегистрировать пользователя с именем {name}, email {email} и паролем {password}")
+    @allure.step("Зарегистрировать пользователя")
     def register(self, name: str, email: str, password: str) -> None:
-        """Выполняет регистрацию нового пользователя"""
+        self.type_text(self.locators.NAME_INPUT, name)
+        self.type_text(self.locators.EMAIL_INPUT, email)
+        self.type_text(self.locators.PASSWORD_INPUT, password)
+        self.click(self.locators.REGISTER_BUTTON)
+        self.wait_until_url_contains("login")
+
+    @allure.step("Проверить сообщение об ошибке")
+    def is_error_message_displayed(self, expected_message: str) -> bool:
         try:
-            name_input = self.driver.find_element(*self._locators.NAME_INPUT)
-            self._type_text(name_input, name)
-
-            email_input = self.driver.find_element(*self._locators.EMAIL_INPUT)
-            self._type_text(email_input, email)
-
-            password_input = self.driver.find_element(*self._locators.PASSWORD_INPUT)
-            self._type_text(password_input, password)
-
-            register_button = self.driver.find_element(*self._locators.REGISTER_BUTTON)
-            self._click(register_button)
-
-            self._wait_until(lambda d: "login" in d.current_url)
-
-        except NoSuchElementException as e:
-            raise RuntimeError(f"Не удалось найти элемент формы регистрации: {str(e)}")
-        except ElementClickInterceptedException as e:
-            raise RuntimeError(f"Не удалось кликнуть на кнопку регистрации: {str(e)}")
-        except TimeoutException as e:
-            raise RuntimeError(f"Таймаут при регистрации пользователя: {str(e)}")
-
-    @allure.step("Проверить наличие сообщения об ошибке")
-    def should_have_error_message(self, expected_message: str) -> bool:
-        """Проверяет наличие ожидаемого сообщения об ошибке"""
-        try:
-            error_element = self._wait_until(
-                lambda d: d.find_element(*self._locators.ERROR_MESSAGE),
-                message="Сообщение об ошибке не найдено"
-            )
-            actual_message = error_element.text
-            return expected_message in actual_message
-        except TimeoutException:
-            return False
+            error_text = self.get_text(self.locators.ERROR_MESSAGE)
+            return expected_message in error_text
         except NoSuchElementException:
+            logger.debug("Элемент с сообщением об ошибке не найден")
+            return False
+        except TimeoutException:
+            logger.debug("Таймаут при ожидании сообщения об ошибке")
             return False
 
     @allure.step("Перейти на страницу входа")
     def go_to_login_page(self) -> None:
-        """Переходит на страницу входа в систему"""
-        try:
-            login_link = self.driver.find_element(*self._locators.LOGIN_LINK)
-            self._click(login_link)
-            self._wait_until(lambda d: "login" in d.current_url)
-        except NoSuchElementException as e:
-            raise RuntimeError(f"Не удалось найти ссылку на страницу входа: {str(e)}")
-        except ElementClickInterceptedException as e:
-            raise RuntimeError(f"Не удалось кликнуть на ссылку входа: {str(e)}")
-        except TimeoutException as e:
-            raise RuntimeError(f"Таймаут при переходе на страницу входа: {str(e)}")
+        """Переходит на страницу входа в систему."""
+        self.click(self.locators.LOGIN_LINK)
+        self.wait_until_url_contains("login")

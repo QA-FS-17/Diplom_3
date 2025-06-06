@@ -1,66 +1,45 @@
 # test_constructor.py
 
 import allure
-from pages.main_page import MainPage
 
 
 @allure.feature("Основной функционал")
 class TestMainFunctionality:
     @allure.story("Переход в конструктор")
-    def test_go_to_constructor(self, driver):
-        main_page = MainPage(driver)
+    def test_go_to_constructor(self, main_page):
         main_page.open()
-
         main_page.navigate_to_constructor()
-
-        assert "stellarburgers" in driver.current_url, "Не удалось перейти в конструктор"
+        assert main_page.is_current_url_contains("stellarburgers")
 
     @allure.story("Переход в ленту заказов")
-    def test_go_to_order_feed(self, driver):
-        main_page = MainPage(driver)
+    def test_go_to_order_feed(self, main_page):
         main_page.open()
-
         main_page.navigate_to_order_feed()
-
-        assert "feed" in driver.current_url, "Не удалось перейти в ленту заказов"
+        assert main_page.is_current_url_contains("feed")
 
     @allure.story("Отображение модального окна с деталями ингредиента")
-    def test_ingredient_modal(self, driver):
-        main_page = MainPage(driver)
+    def test_ingredient_modal(self, main_page):
         main_page.open()
-
         main_page.click_ingredient()
-        is_visible = main_page.is_modal_visible()
-
-        assert is_visible, "Модальное окно с деталями не отображается"
+        assert main_page.is_modal_visible()
 
     @allure.story("Закрытие модального окна")
-    def test_close_modal(self, driver):
-        main_page = MainPage(driver)
+    def test_close_modal(self, main_page):
         main_page.open()
-
         main_page.click_ingredient()
         main_page.close_modal()
-
-        assert not main_page.is_modal_visible(), "Модальное окно не закрылось"
+        assert not main_page.is_modal_visible()
 
     @allure.story("Увеличение счетчика ингредиента")
-    def test_ingredient_counter_increase(self, driver):
-        main_page = MainPage(driver)
+    def test_ingredient_counter_increase(self, main_page):
         main_page.open()
-
         initial_count = main_page.get_ingredient_counter()
         main_page.add_ingredient_to_constructor()
-        new_count = main_page.get_ingredient_counter()
-
-        assert new_count > initial_count, "Счетчик ингредиента не увеличился"
+        assert main_page.get_ingredient_counter() > initial_count
 
     @allure.story("Оформление заказа авторизованным пользователем")
-    def test_make_order_authenticated(self, driver, authenticated_user):
-        main_page = MainPage(driver)
+    def test_make_order_authenticated(self, main_page, authenticated_user):
         main_page.open()
-
         main_page.add_ingredient_to_constructor()
         order_number = main_page.make_order()
-
-        assert order_number.isdigit(), "Не удалось оформить заказ"
+        assert order_number.isdigit()

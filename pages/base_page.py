@@ -1,130 +1,385 @@
 # base_page.py
 
+import allure
+import logging
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     NoSuchElementException,
+    TimeoutException,
     WebDriverException
 )
-from typing import Tuple, Callable, Any, Union
-import allure
+from typing import Tuple, Any, Callable, Optional
+from config import config
+
+logger = logging.getLogger(__name__)
 
 
 class BasePage:
-    """Абстрактный базовый класс для всех page objects"""
+    """Базовый класс для всех Page Object, реализующий основные методы взаимодействия с веб-страницей."""
 
-    def __init__(self, driver: WebDriver):
+    def __init__(self, driver: WebDriver, url_suffix: str = ""):
         """
-        Инициализация базовой страницы
-        :param driver: WebDriver instance
+        Инициализация базовой страницы.
+
+        Args:
+            driver: Экземпляр WebDriver
+            url_suffix: Суффикс URL для конкретной страницы
         """
         self.driver = driver
-        self._timeout = 15
+        self.base_url = f"{config.BASE_URL}/{url_suffix.lstrip('/')}"
+        self.default_timeout = config.DEFAULT_TIMEOUT
 
     @property
-    def timeout(self) -> int:
-        """Таймаут ожидания по умолчанию"""
-        return self._timeout
+    def wait(self) -> WebDriverWait:
+        """Возвращает экземпляр WebDriverWait с default_timeout"""
+        return WebDriverWait(self.driver, self.default_timeout)
 
-    @timeout.setter
-    def timeout(self, value: int):
-        """Установка таймаута ожидания"""
-        self._timeout = value
+    # ==================== Основные методы взаимодействия ====================
 
-    def _wait_until(self,
-                    condition: Callable[[WebDriver], Any],
-                    timeout: Union[int, float, None] = None,
-                    message: str = "") -> Any:
+    @allure.step("Открыть страницу")
+    def open(self) -> None:
+        """Открывает страницу и проверяет её загрузку."""
+        self.driver.get(self.base_url)
+        self.wait_for_page_loaded()
+        self._verify_page_loaded()
+
+    @allure.step("Клик по элементу {locator}")
+    def click(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> None:
         """
-        Абстрактное ожидание условия
-        :param condition: Ожидаемое условие
-        :param timeout: Время ожидания
-        :param message: Сообщение об ошибке
-        """
-        try:
-            wait_timeout = float(timeout) if timeout is not None else self.timeout
-            return WebDriverWait(self.driver, wait_timeout).until(condition, message)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid timeout value: {timeout}") from e
+        Кликает по элементу с ожиданием его кликабельности.
 
-    @allure.step("Клик по элементу")
-    def _click(self, element: WebElement) -> None:
-        """Абстрактный клик по элементу"""
+        Args:
+            locator: Локатор элемента (By, value)
+            timeout: Время ожидания в секундах
+        """
+        element = self.wait_until_clickable(locator, timeout)
         try:
             element.click()
         except ElementClickInterceptedException:
-            self.driver.execute_script("arguments[0].click();", element)
+            self._click_via_js(element)
 
-    @allure.step("Ввод текста")
-    def _type_text(self, element: WebElement, text: str) -> None:
-        """Абстрактный ввод текста"""
-        element.clear()
+    @allure.step("Ввод текста '{text}' в элемент {locator}")
+    def type_text(self, locator: Tuple[str, str], text: str, clear: bool = True) -> None:
+        """
+        Вводит текст в элемент.
+
+        Args:
+            locator: Локатор элемента
+            text: Текст для ввода
+            clear: Нужно ли очищать поле перед вводом
+        """
+        element = self.wait_until_visible(locator)
+        if clear:
+            element.clear()
         element.send_keys(text)
 
-    @allure.step("Проверка видимости элемента")
-    def _is_visible(self, element: WebElement) -> bool:
-        """Абстрактная проверка видимости элемента"""
-        try:
-            return element.is_displayed()
-        except (NoSuchElementException, WebDriverException):
-            return False
+    # ==================== Методы получения данных ====================
 
-    @allure.step("Ожидание видимости элемента")
-    def _wait_visibility(self, element: WebElement, timeout: Union[int, float, None] = None) -> WebElement:
-        """Абстрактное ожидание видимости элемента"""
+    @allure.step("Получить текущий URL")
+    def get_current_url(self) -> str:
+        """Возвращает текущий URL страницы."""
+        return self.driver.current_url
+
+    @allure.step("Получение текста элемента {locator}")
+    def get_text(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> str:
+        """
+        Возвращает текст элемента.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
+        """
+        element = self.wait_until_visible(locator, timeout)
+        return element.text.strip()
+
+    @allure.step("Получить атрибут элемента")
+    def get_attribute(self, locator: Tuple[str, str], attribute: str) -> str:
+        """
+        Возвращает значение атрибута элемента.
+
+        Args:
+            locator: Локатор элемента
+            attribute: Название атрибута
+        """
+        try:
+            element = self.wait_until_present(locator)
+            return element.get_attribute(attribute) or ""
+        except (NoSuchElementException, TimeoutException) as e:
+            logger.error(f"Не удалось получить атрибут: {str(e)}")
+            raise
+
+    # ==================== Методы ожидания ====================
+
+    @allure.step("Ожидание выполнения условия")
+    def wait_for_condition(self, condition: Callable[[], bool],
+                           timeout: Optional[int] = None,
+                           message: str = "") -> bool:
+        """
+        Ожидает выполнения произвольного условия.
+
+        Args:
+            condition: Функция-условие, возвращающая bool
+            timeout: Время ожидания в секундах
+            message: Сообщение об ошибке
+
+        Returns:
+            True если условие выполнено
+        """
+        wait_timeout = timeout or self.default_timeout
+        try:
+            return WebDriverWait(self.driver, wait_timeout).until(
+                lambda _: condition(),
+                message=message or f"Условие не выполнено за {wait_timeout} секунд"
+            )
+        except TimeoutException as e:
+            logger.error(f"Timeout waiting for condition: {str(e)}")
+            raise
+
+    @allure.step("Ожидание присутствия элемента в DOM")
+    def wait_until_present(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
+        """
+        Ожидает появления элемента в DOM (без проверки видимости).
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
+
+        Returns:
+            Найденный WebElement
+        """
         return self._wait_until(
-            lambda d: element.is_displayed(),
+            EC.presence_of_element_located(locator),
             timeout=timeout,
-            message="Элемент не стал видимым"
+            message=f"Элемент {locator} не найден в DOM"
         )
 
-    @allure.step("Прокрутка к элементу")
-    def _scroll_to(self, element: WebElement) -> None:
-        """Абстрактная прокрутка к элементу"""
-        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
-
-    @allure.step("Drag-and-drop элемента")
-    def _drag_and_drop(self, source: WebElement, target: WebElement) -> None:
+    @allure.step("Ожидание видимости элемента {locator}")
+    def wait_until_visible(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
         """
-        Абстрактная реализация drag-and-drop
-        :param source: Элемент, который перетаскиваем
-        :param target: Элемент, куда перетаскиваем
+        Ожидает появления элемента в DOM и его видимости.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
         """
-        self.driver.execute_script("""
-            function simulateDragDrop(sourceNode, targetNode) {
-                const dragStartEvent = new DragEvent('dragstart', {
-                    bubbles: true,
-                    cancelable: true,
-                    dataTransfer: new DataTransfer()
-                });
-                sourceNode.dispatchEvent(dragStartEvent);
+        return self._wait_until(
+            EC.visibility_of_element_located(locator),
+            timeout=timeout,
+            message=f"Элемент {locator} не стал видимым"
+        )
 
-                const dropEvent = new DragEvent('drop', {
-                    bubbles: true,
-                    cancelable: true,
-                    dataTransfer: dragStartEvent.dataTransfer
-                });
-                targetNode.dispatchEvent(dropEvent);
-
-                const dragEndEvent = new DragEvent('dragend', {
-                    bubbles: true,
-                    cancelable: true
-                });
-                sourceNode.dispatchEvent(dragEndEvent);
-            }
-            simulateDragDrop(arguments[0], arguments[1]);
-        """, source, target)
-
-    @allure.step("Проверка наличия элемента")
-    def _is_element_present(self, locator: Tuple[str, str]) -> bool:
+    @allure.step("Ожидание кликабельности элемента {locator}")
+    def wait_until_clickable(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
         """
-        Абстрактная проверка наличия элемента
-        :param locator: Локатор элемента (кортеж из стратегии и значения)
+        Ожидает, пока элемент станет кликабельным.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
+        """
+        return self._wait_until(
+            EC.element_to_be_clickable(locator),
+            timeout=timeout,
+            message=f"Элемент {locator} не стал кликабельным"
+        )
+
+    @allure.step("Ожидание загрузки страницы")
+    def wait_for_page_loaded(self, timeout: Optional[int] = None) -> None:
+        """
+        Ожидает полной загрузки страницы.
+
+        Args:
+            timeout: Время ожидания в секундах
+        """
+        wait_timeout = timeout or self.default_timeout
+        try:
+            WebDriverWait(self.driver, wait_timeout).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+        except TimeoutException as e:
+            logger.error(f"Страница не загрузилась за {wait_timeout} секунд")
+            raise
+
+    @allure.step("Ожидание URL содержащего '{expected_part}'")
+    def wait_until_url_contains(self, expected_part: str, timeout: Optional[int] = None) -> bool:
+        """
+        Ожидает, пока URL будет содержать указанную строку.
+
+        Args:
+            expected_part: Часть URL для проверки
+            timeout: Время ожидания в секундах
+        """
+        return self._wait_until(
+            EC.url_contains(expected_part),
+            timeout=timeout,
+            message=f"URL не содержит '{expected_part}'"
+        )
+
+    @allure.step("Ожидание исчезновения элемента")
+    def wait_until_not_visible(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> bool:
+        """
+        Ожидает, пока элемент перестанет быть видимым.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
+        """
+        return self._wait_until(
+            EC.invisibility_of_element_located(locator),
+            timeout=timeout,
+            message=f"Элемент {locator} не исчез"
+        )
+
+    @allure.step("Ожидание появления текста в элементе")
+    def wait_until_text_present(self, locator: Tuple[str, str], text: str, timeout: Optional[int] = None) -> bool:
+        """
+        Ожидает появления текста в элементе.
+
+        Args:
+            locator: Локатор элемента
+            text: Ожидаемый текст
+            timeout: Время ожидания в секундах
+        """
+        return self._wait_until(
+            EC.text_to_be_present_in_element(locator, text),
+            timeout=timeout,
+            message=f"Текст '{text}' не появился в элементе {locator}"
+        )
+
+    @allure.step("Проверка что URL содержит '{expected_part}'")
+    def url_should_contain(self, expected_part: str) -> None:
+        """
+        Проверяет что текущий URL содержит указанную строку.
+        Вызывает AssertionError если условие не выполняется.
+
+        Args:
+            expected_part: Часть URL для проверки
+        """
+        current_url = self.get_current_url()
+        if expected_part.lower() not in current_url.lower():
+            raise AssertionError(f"URL '{current_url}' не содержит '{expected_part}'")
+
+    # ==================== Проверки состояния ====================
+
+    @allure.step("Проверка видимости элемента {locator}")
+    def is_visible(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> bool:
+        """
+        Проверяет видимость элемента.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
         """
         try:
-            self.driver.find_element(*locator)
-            return True
-        except NoSuchElementException:
+            return self.wait_until_visible(locator, timeout) is not None
+        except TimeoutException:
             return False
+
+    @allure.step("Проверка присутствия элемента {locator}")
+    def is_present(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> bool:
+        """
+        Проверяет наличие элемента в DOM.
+
+        Args:
+            locator: Локатор элемента
+            timeout: Время ожидания в секундах
+        """
+        try:
+            self.wait_until_present(locator, timeout)
+            return True
+        except TimeoutException:
+            return False
+
+    # ==================== Внутренние методы ====================
+
+    def _wait_until(self, condition: Callable[[WebDriver], Any],
+                    timeout: Optional[int] = None,
+                    message: str = "") -> Any:
+        """
+        Базовый метод для ожидания условий.
+
+        Args:
+            condition: Условие для ожидания
+            timeout: Время ожидания в секундах
+            message: Сообщение об ошибке
+        """
+        wait_timeout = timeout or self.default_timeout
+        try:
+            return WebDriverWait(self.driver, wait_timeout).until(
+                condition,
+                message=message
+            )
+        except TimeoutException as e:
+            logger.error(f"Timeout waiting for condition: {message}")
+            raise
+        except WebDriverException as e:
+            logger.error(f"WebDriver error while waiting: {str(e)}")
+            raise
+
+    @allure.step("Клик через JavaScript")
+    def _click_via_js(self, element: WebElement) -> None:
+        """Выполняет клик через JavaScript."""
+        try:
+            self.driver.execute_script("arguments[0].click();", element)
+        except WebDriverException as e:
+            logger.error(f"JavaScript click failed: {str(e)}")
+            raise
+
+    def _verify_page_loaded(self) -> None:
+        """Абстрактный метод для проверки загрузки страницы (должен быть реализован в дочерних классах)."""
+        raise NotImplementedError("Метод должен быть реализован в дочернем классе")
+
+    @allure.step("Выполнение перетаскивания через JavaScript")
+    def _execute_drag_and_drop_js(self, source: WebElement, target: WebElement) -> None:
+        """Внутренний метод для выполнения drag-and-drop через JS."""
+        script = """
+        function simulateDragDrop(sourceNode, targetNode) {
+            // Создаем и инициируем событие dragstart
+            const dragStartEvent = new DragEvent('dragstart', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: new DataTransfer()
+            });
+            sourceNode.dispatchEvent(dragStartEvent);
+
+            // Создаем и инициируем событие dragover
+            const dragOverEvent = new DragEvent('dragover', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dragStartEvent.dataTransfer
+            });
+            targetNode.dispatchEvent(dragOverEvent);
+
+            // Создаем и инициируем событие drop
+            const dropEvent = new DragEvent('drop', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dragStartEvent.dataTransfer
+            });
+            targetNode.dispatchEvent(dropEvent);
+
+            // Завершаем процесс событием dragend
+            const dragEndEvent = new DragEvent('dragend', {
+                bubbles: true,
+                cancelable: true
+            });
+            sourceNode.dispatchEvent(dragEndEvent);
+        }
+        simulateDragDrop(arguments[0], arguments[1]);
+        """
+        self.driver.execute_script(script, source, target)
+
+    @allure.step("Прокрутка к элементу")
+    def _scroll_to_element(self, element: WebElement) -> None:
+        """Прокручивает страницу к указанному элементу."""
+        try:
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});",
+                element
+            )
+        except WebDriverException as e:
+            logger.warning(f"Не удалось прокрутить к элементу: {str(e)}")
