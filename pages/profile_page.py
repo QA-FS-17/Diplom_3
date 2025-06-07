@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class ProfilePage(BasePage):
-    """Page Object для страницы профиля пользователя."""
-
     def __init__(self, driver: WebDriver):
         super().__init__(driver, config.PROFILE_URL)
         self.locators = ProfilePageLocators()
@@ -43,4 +41,8 @@ class ProfilePage(BasePage):
     @allure.step("Проверить, что пользователь вышел")
     def is_logged_out(self) -> bool:
         """Проверяет, выполнен ли выход из аккаунта."""
-        return self.url_contains("login")
+        try:
+            self.url_should_contain("login")
+            return True
+        except AssertionError:
+            return False

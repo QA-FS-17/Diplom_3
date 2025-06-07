@@ -1,6 +1,7 @@
 # password_restore_page.py
 
 import allure
+from selenium.common import TimeoutException
 from selenium.webdriver.remote.webdriver import WebDriver
 from .base_page import BasePage
 from locators.password_restore_locators import PasswordRestoreLocators
@@ -8,8 +9,6 @@ from config import config
 
 
 class PasswordRestorePage(BasePage):
-    """Page Object для страницы восстановления пароля."""
-
     def __init__(self, driver: WebDriver):
         super().__init__(driver, config.FORGOT_PASSWORD_URL)
         self.locators = PasswordRestoreLocators()
@@ -35,4 +34,8 @@ class PasswordRestorePage(BasePage):
     @allure.step("Проверить активность кнопки восстановления")
     def is_restore_button_active(self) -> bool:
         """Проверяет, активна ли кнопка восстановления"""
-        return self.is_element_enabled(self.locators.RESTORE_BUTTON)
+        try:
+            self.wait_until_clickable(self.locators.RESTORE_BUTTON, timeout=3)
+            return True
+        except TimeoutException:
+            return False

@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class MainPage(BasePage):
-    """Page Object для главной страницы приложения."""
-
     def __init__(self, driver: WebDriver):
         super().__init__(driver, config.BASE_URL)
         self.locators = MainPageLocators()
@@ -84,7 +82,9 @@ class MainPage(BasePage):
     @allure.step("Добавить ингредиент в конструктор")
     def add_ingredient_to_constructor(self) -> None:
         """Добавляет ингредиент в конструктор бургера."""
-        self.drag_and_drop(self.locators.INGREDIENT_ITEM, self.locators.CONSTRUCTOR_AREA)
+        source = self.wait_until_visible(self.locators.INGREDIENT_ITEM)
+        target = self.wait_until_visible(self.locators.CONSTRUCTOR_AREA)
+        self._execute_drag_and_drop_js(source, target)
 
     @allure.step("Перейти в личный кабинет")
     def go_to_personal_account(self) -> None:

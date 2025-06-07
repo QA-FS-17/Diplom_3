@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class RegisterPage(BasePage):
-    """Page Object для страницы регистрации пользователя."""
-
     def __init__(self, driver: WebDriver):
         super().__init__(driver, config.REGISTER_URL)
         self.locators = RegisterPageLocators()

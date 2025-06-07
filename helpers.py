@@ -76,12 +76,6 @@ def wait_for_text_in_element(
 
 @allure.step("Зарегистрировать нового пользователя")
 def register_new_user(driver: WebDriver, user_data: dict) -> None:
-    """
-    Регистрирует нового пользователя
-    Args:
-        driver: WebDriver instance
-        user_data: Словарь с данными пользователя {'name': str, 'email': str, 'password': str}
-    """
     register_page = RegisterPage(driver)
     register_page.open()
     register_page.register(
@@ -92,24 +86,11 @@ def register_new_user(driver: WebDriver, user_data: dict) -> None:
 
 @allure.step("Авторизовать пользователя")
 def login_user(driver: WebDriver, email: str, password: str) -> None:
-    """
-    Выполняет авторизацию пользователя
-    Args:
-        driver: WebDriver instance
-        email: Email пользователя
-        password: Пароль пользователя
-    """
     login_page = LoginPage(driver)
     login_page.open()
     login_page.login(email, password)
 
 @allure.step("Полная регистрация и авторизация")
 def full_register_and_login(driver: WebDriver, user_data: dict) -> None:
-    """
-    Выполняет полный цикл регистрации и авторизации
-    Args:
-        driver: WebDriver instance
-        user_data: Словарь с данными пользователя {'name': str, 'email': str, 'password': str}
-    """
     register_new_user(driver, user_data)
     login_user(driver, user_data["email"], user_data["password"])

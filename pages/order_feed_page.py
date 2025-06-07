@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class OrderFeedPage(BasePage):
-    """Page Object для страницы ленты заказов."""
-
     def __init__(self, driver: WebDriver):
         super().__init__(driver, config.ORDER_FEED_URL)
         self.locators = OrderFeedLocators()
