@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 class BasePage:
     def __init__(self, driver: WebDriver, url_suffix: str = ""):
         self.driver = driver
-        self.base_url = f"{config.BASE_URL}/{url_suffix.lstrip('/')}"
+        self.base_url = config.BASE_URL.rstrip('/')
+        self.url = f"{self.base_url}/{url_suffix.lstrip('/')}"
         self.default_timeout = config.DEFAULT_TIMEOUT
 
     @property
@@ -31,11 +32,10 @@ class BasePage:
 
     # ==================== Основные методы взаимодействия ====================
 
-    @allure.step("Открыть страницу")
-    def open(self) -> None:
-        """Открывает страницу и проверяет её загрузку."""
-        self.driver.get(self.base_url)
-        self.wait_for_page_loaded()
+    def open(self):
+        """Открывает страницу с корректным URL"""
+        logger.info(f"Opening URL: {self.url}")
+        self.driver.get(self.url)
         self._verify_page_loaded()
 
     @allure.step("Клик по элементу {locator}")

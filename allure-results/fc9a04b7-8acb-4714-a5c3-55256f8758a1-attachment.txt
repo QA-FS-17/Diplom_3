@@ -1,0 +1,1 @@
+[31m[1mERROR   [0m pages.base_page:base_page.py:195 Timeout waiting for condition: Элемент ('css selector', 'div.input_status_active') не стал видимым

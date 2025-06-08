@@ -3,12 +3,12 @@
 from selenium.webdriver.common.by import By
 
 class RegisterPageLocators:
-    # Уникальные элементы регистрации
-    PAGE_HEADER = (By.XPATH, "//h2[text()='Регистрация']")
-    NAME_INPUT = (By.XPATH, "//input[@name='name']")
-    EMAIL_INPUT = (By.XPATH, "//input[@type='email']")
-    PASSWORD_INPUT = (By.XPATH, "//input[@type='password']")
-    REGISTER_BUTTON = (By.XPATH, "//button[contains(text(), 'Зарегистрироваться')]")
+    REGISTER_FORM = (By.CSS_SELECTOR, "form.Auth_form__3qKeq")
+    NAME_INPUT = (By.CSS_SELECTOR, "input[name='name']")
+    EMAIL_INPUT = (By.CSS_SELECTOR,
+                   "fieldset.Auth_fieldset__1QzWN:nth-of-type(2) input")
+    PASSWORD_INPUT = (By.CSS_SELECTOR, "input[type='password']")
+    REGISTER_BUTTON = (By.CSS_SELECTOR, "button.button_button__33qZ0")
+    ERROR_MESSAGE = (By.CSS_SELECTOR, "p.input__error")
     LOGIN_LINK = (By.XPATH, "//a[contains(@href, 'login')]")
-    ERROR_MESSAGE = (By.XPATH, "//p[contains(@class, 'input__error')]")
-    REGISTER_FORM = (By.XPATH, "//form[contains(@class, 'Auth_form')]")
+    CONSTRUCTOR_LINK = (By.XPATH, "//a[contains(@href, '/') and contains(@class, 'AppHeader_header__link')]")

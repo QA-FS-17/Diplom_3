@@ -9,7 +9,8 @@ from selenium.common.exceptions import (
     WebDriverException,
     TimeoutException,
     NoSuchElementException,
-    StaleElementReferenceException
+    StaleElementReferenceException,
+    ElementNotInteractableException
 )
 from pages.login_page import LoginPage
 from pages.register_page import RegisterPage
@@ -74,6 +75,7 @@ def wait_for_text_in_element(
         logger.warning(f"Элемент не найден: {str(e)}")
         return False
 
+
 @allure.step("Зарегистрировать нового пользователя")
 def register_new_user(driver: WebDriver, user_data: dict) -> None:
     register_page = RegisterPage(driver)
@@ -84,13 +86,46 @@ def register_new_user(driver: WebDriver, user_data: dict) -> None:
         user_data["password"]
     )
 
+
 @allure.step("Авторизовать пользователя")
 def login_user(driver: WebDriver, email: str, password: str) -> None:
+    if not isinstance(driver, WebDriver):
+        raise TypeError("Параметр driver должен быть экземпляром WebDriver")
+
+    if not email or not password:
+        raise ValueError("Email и пароль обязательны для авторизации")
+
     login_page = LoginPage(driver)
-    login_page.open()
-    login_page.login(email, password)
+
+    try:
+        login_page.open()
+    except TimeoutException as e:
+        raise TimeoutError(f"Таймаут при открытии страницы логина: {str(e)}") from e
+
+    try:
+        login_page.type_text(login_page.locators.EMAIL_INPUT, email)
+        login_page.type_text(login_page.locators.PASSWORD_INPUT, password)
+        login_page.click(login_page.locators.LOGIN_BUTTON)
+    except NoSuchElementException as e:
+        raise LookupError(f"Не найден элемент для ввода данных: {str(e)}") from e
+    except ElementNotInteractableException as e:
+        raise RuntimeError(f"Элемент недоступен для взаимодействия: {str(e)}") from e
+    except WebDriverException as e:
+        raise RuntimeError(f"Ошибка WebDriver при авторизации: {str(e)}") from e
+
 
 @allure.step("Полная регистрация и авторизация")
 def full_register_and_login(driver: WebDriver, user_data: dict) -> None:
-    register_new_user(driver, user_data)
-    login_user(driver, user_data["email"], user_data["password"])
+    if not isinstance(driver, WebDriver):
+        raise TypeError("Параметр driver должен быть экземпляром WebDriver")
+
+    required_fields = {'email', 'password', 'name'}
+    if not required_fields.issubset(user_data.keys()):
+        missing = required_fields - set(user_data.keys())
+        raise ValueError(f"Отсутствуют обязательные поля: {missing}")
+
+    try:
+        register_new_user(driver, user_data)
+        login_user(driver, user_data["email"], user_data["password"])
+    except (ValueError, LookupError, RuntimeError, TimeoutError) as e:
+        raise RuntimeError(f"Ошибка в процессе регистрации/авторизации: {str(e)}") from e

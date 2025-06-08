@@ -1,18 +1,17 @@
 # conftest.py
 
 import logging
+import random
+import uuid
 import pytest
 import requests
 from selenium import webdriver
 import undetected_chromedriver as uc
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.common.exceptions import (
-    WebDriverException,
-    NoSuchElementException,
-    TimeoutException
-)
+from selenium.common.exceptions import WebDriverException
 from config import config
-from data import TestUser
+from pages.login_page import LoginPage
+from pages.main_page import MainPage
 
 logger = logging.getLogger(__name__)
 
@@ -79,82 +78,89 @@ def api_client():
         session.close()
 
 
-@pytest.fixture(scope="session")
-def test_user(api_client):
-    """Фикстура тестового пользователя с гарантированной регистрацией"""
-    user_data = TestUser().valid_credentials
-
-    # Удаляем пользователя, если он уже существует
-    try:
-        login_response = api_client.post(
-            config.api_login_url,
-            json={"email": user_data["email"], "password": user_data["password"]}
-        )
-        if login_response.status_code == 200:
-            token = login_response.json().get("accessToken")
-            api_client.delete(
-                config.api_user_url,
-                headers={"Authorization": f"Bearer {token}"}
-            )
-    except requests.RequestException:
-        pass
-
-    # Регистрируем нового пользователя
-    response = api_client.post(config.api_register_url, json=user_data)
-    if response.status_code != 200:
-        pytest.fail(f"Не удалось зарегистрировать тестового пользователя: {response.text}")
-
-    yield user_data
-
-    # Удаление пользователя после всех тестов
-    try:
-        login_response = api_client.post(
-            config.api_login_url,
-            json={"email": user_data["email"], "password": user_data["password"]}
-        )
-        if login_response.status_code == 200:
-            token = login_response.json().get("accessToken")
-            api_client.delete(
-                config.api_user_url,
-                headers={"Authorization": f"Bearer {token}"}
-            )
-    except requests.RequestException as e:
-        logger.error(f"Ошибка при удалении пользователя: {e}")
+@pytest.fixture
+def test_user():
+    """Фикстура генерирует тестовые данные пользователя"""
+    return {
+        "email": f"test_{uuid.uuid4().hex[:8]}@example.com",
+        "password": f"P@ssw0rd_{uuid.uuid4().hex[:4]}",
+        "name": f"User_{uuid.uuid4().hex[:4]}"
+    }
 
 
 @pytest.fixture
 def authenticated_user(driver, test_user, api_client):
-    """Фикстура гарантированно авторизованного пользователя"""
-    # Получаем токен через API
-    response = api_client.post(
-        config.api_login_url,
-        json={"email": test_user["email"], "password": test_user["password"]},
+    """Фикстура авторизованного пользователя с очисткой"""
+    # 1. Регистрация через API
+    register_response = api_client.post(
+        config.api_register_url,
+        json=test_user,
         timeout=10
     )
-    if response.status_code != 200:
-        pytest.fail(f"Ошибка авторизации: {response.text}")
+    assert register_response.status_code == 200, f"Ошибка регистрации: {register_response.text}"
 
-    token = response.json().get("accessToken")
-    if not token:
-        pytest.fail("Не получен токен авторизации")
+    # 2. Авторизация через UI
+    login_page = LoginPage(driver)
+    login_page.open()
+    login_page.login(test_user["email"], test_user["password"])
 
-    # Открываем главную страницу
-    driver.get(config.MAIN_PAGE_URL)
+    # 3. Проверка успешной авторизации
+    main_page = MainPage(driver)
+    assert main_page.is_user_logged_in(), "Пользователь не авторизовался"
 
-    # Добавляем cookie
-    domain = config.BASE_URL.split('//')[-1].split(':')[0]
-    driver.add_cookie({
-        "name": "accessToken",
-        "value": token,
-        "domain": domain,
-        "path": "/",
-        "secure": config.BASE_URL.startswith('https')
-    })
+    yield test_user
 
-    # Обновляем страницу
-    driver.refresh()
+    # 4. Очистка через API
+    try:
+        login_response = api_client.post(
+            config.api_login_url,
+            json={"email": test_user["email"], "password": test_user["password"]},
+            timeout=5
+        )
+        if login_response.status_code == 200:
+            api_client.delete(
+                config.api_user_url,
+                headers={"Authorization": f"Bearer {login_response.json()['accessToken']}"},
+                timeout=5
+            )
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Ошибка при удалении пользователя: {str(e)}")
 
-    return test_user
+
+@pytest.fixture(scope="module")
+def registered_user(api_client):
+    """Фикстура регистрации пользователя через API (1 раз на файл тестов)"""
+    user_data = {
+        "email": f"user_{random.randint(1000, 9999)}@test.com",
+        "password": "Password123",
+        "name": "Test User"
+    }
+
+    # Регистрация
+    response = api_client.post(
+        config.api_register_url,
+        json=user_data,
+        timeout=5
+    )
+    assert response.status_code == 200, "Не удалось зарегистрировать пользователя"
+
+    yield user_data
+
+    # Удаление пользователя через API
+    try:
+        auth_response = api_client.post(
+            config.api_login_url,
+            json={"email": user_data["email"], "password": user_data["password"]},
+            timeout=5
+        )
+        if auth_response.status_code == 200:
+            api_client.delete(
+                config.api_user_url,
+                headers={"Authorization": f"Bearer {auth_response.json()['accessToken']}"},
+                timeout=5
+            )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Ошибка при удалении пользователя: {type(e).__name__}")
 
 
 @pytest.fixture
@@ -170,7 +176,7 @@ def clean_orders(api_client, authenticated_user):
                 headers={"Authorization": f"Bearer {token}"}
             )
             assert response.status_code == 200, "Не удалось очистить заказы"
-    except requests.RequestException as e:
+    except requests.exceptions.RequestException as e:
         logger.error(f"Ошибка при очистке заказов: {e}")
 
 
@@ -198,11 +204,13 @@ def login_page(driver):
     from pages.login_page import LoginPage
     return LoginPage(driver)
 
+
 @pytest.fixture
 def register_page(driver):
     """Фикстура для страницы регистрации"""
     from pages.register_page import RegisterPage
     return RegisterPage(driver)
+
 
 @pytest.fixture
 def password_restore_page(driver):

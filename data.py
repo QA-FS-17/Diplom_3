@@ -1,6 +1,5 @@
 # data.py
 
-import uuid
 from typing import Dict, Literal
 
 # Константы для идентификаторов ингредиентов
@@ -25,54 +24,31 @@ IngredientName = Literal["fluorescent", "crust", "spicy", "sour_cream", "biocutl
 
 
 class TestUser:
-    """Класс для генерации тестовых данных пользователя."""
-
-    DEFAULT_PASSWORD = "SecurePassword123!"
-    DEFAULT_NAME = "Test User"
-
     def __init__(self):
-        self._credentials = None
+        self._credentials = {
+            "email": self.generate_test_email(),
+            "password": self.generate_test_password(),
+            "name": self.generate_test_name()
+        }
 
     @staticmethod
     def generate_test_email(prefix: str = "test") -> str:
-        """Генерирует уникальный тестовый email.
-
-        Args:
-            prefix: Префикс для email (по умолчанию "test")
-
-        Returns:
-            Строка с email в формате prefix_uuid@example.com
-        """
+        import uuid
         return f"{prefix}_{uuid.uuid4().hex[:8]}@example.com"
+
+    @staticmethod
+    def generate_test_password() -> str:
+        import uuid
+        return f"P@ssw0rd_{uuid.uuid4().hex[:4]}"
+
+    @staticmethod
+    def generate_test_name() -> str:
+        import uuid
+        return f"User_{uuid.uuid4().hex[:4]}"
 
     @property
     def valid_credentials(self) -> Dict[str, str]:
-        """Возвращает валидные учетные данные для регистрации/авторизации.
-
-        Returns:
-            Словарь с email, password и name
-        """
-        if not self._credentials:
-            self._credentials = {
-                "email": self.generate_test_email(),
-                "password": self.DEFAULT_PASSWORD,
-                "name": self.DEFAULT_NAME
-            }
         return self._credentials
-
-    @property
-    def invalid_passwords(self) -> Dict[str, str]:
-        """Возвращает набор невалидных паролей с описанием ошибок.
-
-        Returns:
-            Словарь {описание_ошибки: пароль}
-        """
-        return {
-            "too_short": "Short1",
-            "no_digits": "NoDigits!",
-            "no_uppercase": "lowercase123",
-            "no_special_chars": "MissingSpecial1"
-        }
 
 
 def get_ingredient_id(ingredient_type: IngredientType, name: IngredientName) -> str:
