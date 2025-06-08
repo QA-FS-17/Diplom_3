@@ -2,7 +2,6 @@
 
 import allure
 import logging
-from selenium.webdriver.remote.webdriver import WebDriver
 from .base_page import BasePage
 from locators.login_page_locators import LoginPageLocators
 from selenium.common.exceptions import TimeoutException
@@ -10,16 +9,22 @@ from selenium.common.exceptions import TimeoutException
 logger = logging.getLogger(__name__)
 
 class LoginPage(BasePage):
-    def __init__(self, driver: WebDriver):
-        super().__init__(driver)
+    def __init__(self, driver):
+        super().__init__(driver, url_suffix="login")
         self.locators = LoginPageLocators()
-        self.logger = logging.getLogger(type(self).__name__)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-    @allure.step("Проверить загрузку страницы логина")
+    @allure.step("Проверка загрузки страницы входа")
     def _verify_page_loaded(self) -> None:
-        """Проверка загрузки страницы логина"""
-        self.wait_until_visible(self.locators.LOGIN_FORM)
-        self.wait_until_visible(self.locators.EMAIL_INPUT)
+        """Проверка загрузки страницы входа"""
+        elements_to_check = [
+            self.locators.LOGIN_FORM,
+            self.locators.EMAIL_INPUT,
+            self.locators.PASSWORD_INPUT
+        ]
+
+        for locator in elements_to_check:
+            self.wait_until_visible(locator)
 
     @allure.step("Открыть страницу логина")
     def open(self) -> None:

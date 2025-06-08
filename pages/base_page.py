@@ -172,6 +172,14 @@ class BasePage:
         except TimeoutException:
             return False
 
+    @allure.step("Проверить кликабельность элемента {locator}")
+    def is_clickable(self, locator: Tuple[str, str], timeout: int = 5) -> bool:
+        try:
+            self.wait_until_clickable(locator, timeout)
+            return True
+        except TimeoutException:
+            return False
+
     # ==================== Внутренние методы ====================
 
     def _wait_until(self, condition: Callable[[WebDriver], Any],
