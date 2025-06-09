@@ -25,12 +25,11 @@ class ProfilePage(BasePage):
         self.wait_until_visible(self.locators.PROFILE_FORM)
         self.url_should_contain("account/profile")
 
-    @allure.step("Перейти в историю заказов")
-    def go_to_order_history(self) -> None:
-        """Переходит на страницу истории заказов."""
+    @allure.step("Нажать на ссылку истории заказов")
+    def click_order_history_link(self) -> None:
+        """Кликает на ссылку истории заказов без ожидания раздела"""
         self.click(self.locators.ORDER_HISTORY_LINK)
         self.wait_until_url_contains("order-history")
-        self.wait_until_visible(self.locators.ORDER_HISTORY_SECTION)
 
     @allure.step("Выйти из аккаунта")
     def logout(self) -> None:

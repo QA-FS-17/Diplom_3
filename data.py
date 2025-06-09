@@ -52,18 +52,7 @@ class TestUser:
 
 
 def get_ingredient_id(ingredient_type: IngredientType, name: IngredientName) -> str:
-    """Возвращает идентификатор ингредиента по типу и названию.
-
-    Args:
-        ingredient_type: Тип ингредиента ('bun', 'sauce', 'main')
-        name: Название конкретного ингредиента
-
-    Returns:
-        Строка с идентификатором ингредиента
-
-    Raises:
-        KeyError: Если ингредиент не найден
-    """
+    """Возвращает идентификатор ингредиента по типу и названию."""
     try:
         return INGREDIENT_IDS[ingredient_type][name]
     except KeyError as e:
