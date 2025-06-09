@@ -36,7 +36,7 @@ class OrderFeedPage(BasePage):
     @allure.step("Получить номер заказа из модального окна")
     def get_modal_order_number(self) -> str:
         """Возвращает номер заказа из модального окна."""
-        return self.get_text(self.locators.MODAL_ORDER_NUMBER, timeout=self.modal_timeout)
+        return self.get_text(self.locators.MODAL_ORDER_NUMBER, timeout=10)
 
     @allure.step("Проверить видимость модального окна заказа")
     def is_order_modal_visible(self) -> bool:

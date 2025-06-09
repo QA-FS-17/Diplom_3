@@ -60,6 +60,14 @@ class BasePage:
         """Возвращает текущий URL страницы."""
         return self.driver.current_url
 
+    @allure.step("Приводит URL к единому формату")
+    def normalize_url(self, url: str) -> str:
+        """Приводит URL к единому формату (удаляет дубли и лишние слеши)"""
+        url = url.rstrip('/')
+        if url.startswith('http'):
+            return url
+        return f"{self.base_url.rstrip('/')}/{url.lstrip('/')}"
+
     @allure.step("Получение текста элемента {locator}")
     def get_text(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> str:
         element = self.wait_until_visible(locator, timeout)

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class MainPage(BasePage):
     def __init__(self, driver: WebDriver):
-        super().__init__(driver, config.BASE_URL)
+        super().__init__(driver, url_suffix="")
         self.locators = MainPageLocators()
         self.modal_locators = ModalLocators()
         self.logger = logging.getLogger(__name__)
@@ -69,9 +69,11 @@ class MainPage(BasePage):
 
     @allure.step("Перейти в ленту заказов")
     def navigate_to_order_feed(self) -> None:
-        """Переходит в ленту заказов."""
-        self.click(self.locators.ORDER_FEED_BTN)
-        self.wait_until_url_contains("feed")
+        """Кликает на ссылку ленты заказов"""
+        logger.info(f"Current URL before click: {self.driver.current_url}")
+        self.click(self.locators.ORDER_FEED_BUTTON)
+        logger.info(f"Current URL after click: {self.driver.current_url}")
+        self.wait_until_url_contains("/feed")
 
     @allure.step("Оформить заказ")
     def make_order(self) -> str:

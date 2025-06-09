@@ -3,9 +3,10 @@
 import allure
 from pages.main_page import MainPage
 from pages.register_page import RegisterPage
-from pages.login_page import LoginPage
+from pages.order_feed_page import OrderFeedPage
 from config import config
-from helpers import register_new_user, login_user
+from helpers import drag_and_drop
+from locators.main_page_locators import MainPageLocators
 
 
 @allure.feature("Основной функционал")
@@ -17,92 +18,95 @@ class TestConstructor:
 
         with allure.step("1. Открыть страницу регистрации"):
             register_page.open()
-            assert register_page.get_current_url() == config.REGISTER_URL
+            assert register_page.get_current_url().rstrip('/') == config.REGISTER_URL.rstrip('/')
 
         with allure.step("2. Нажать на ссылку 'Конструктор' в хедере"):
             register_page.click_constructor_link()
 
         with allure.step("3. Проверить переход на главную страницу"):
-            assert main_page.get_current_url() == config.MAIN_PAGE_URL
+            assert main_page.get_current_url().rstrip('/') == config.MAIN_PAGE_URL.rstrip('/')
             assert main_page.is_ingredients_section_visible()
 
     @allure.title("Переход в ленту заказов по клику на 'Лента заказов'")
     def test_navigate_to_order_feed(self, driver):
         main_page = MainPage(driver)
+        order_feed_page = OrderFeedPage(driver)
 
         with allure.step("1. Открыть главную страницу"):
             main_page.open()
-            assert main_page.get_current_url() == config.MAIN_PAGE_URL
+            assert main_page.get_current_url().rstrip('/') == config.MAIN_PAGE_URL.rstrip('/')
 
-        with allure.step("2. Нажать на ссылку 'Лента заказов' в хедере"):
+        with allure.step("2. Нажать на ссылку 'Лента заказов'"):
             main_page.navigate_to_order_feed()
 
-        with allure.step("3. Проверить переход в раздел ленты заказов"):
-            assert main_page.get_current_url() == config.ORDER_FEED_URL
+        with allure.step("3. Проверить переход в ленту заказов"):
+            assert order_feed_page.get_current_url().rstrip('/') == config.ORDER_FEED_URL.rstrip('/')
+            assert order_feed_page.is_visible(order_feed_page.locators.PAGE_HEADER)
 
     @allure.title("Открытие модального окна с деталями ингредиента")
-    def test_open_ingredient_modal(self, driver):
+    def test_ingredient_modal_open(self, driver):
         main_page = MainPage(driver)
 
         with allure.step("1. Открыть главную страницу"):
             main_page.open()
 
-        with allure.step("2. Кликнуть на первый ингредиент в секции булок"):
+        with allure.step("2. Кликнуть на ингредиент"):
             main_page.click_ingredient()
 
-        with allure.step("3. Проверить отображение модального окна"):
+        with allure.step("3. Проверить открытие модального окна"):
             assert main_page.is_modal_visible()
 
     @allure.title("Закрытие модального окна с деталями ингредиента")
-    def test_close_ingredient_modal(self, driver):
+    def test_ingredient_modal_close(self, driver):
         main_page = MainPage(driver)
 
         with allure.step("1. Открыть главную страницу"):
             main_page.open()
 
-        with allure.step("2. Открыть модальное окно с ингредиентом"):
+        with allure.step("2. Кликнуть на ингредиент"):
             main_page.click_ingredient()
+
+        with allure.step("3. Проверить открытие модального окна"):
             assert main_page.is_modal_visible()
 
-        with allure.step("3. Закрыть модальное окно"):
+        with allure.step("4. Закрыть модальное окно"):
             main_page.close_modal()
 
-        with allure.step("4. Проверить что модальное окно закрыто"):
+        with allure.step("5. Проверить закрытие модального окна"):
             assert not main_page.is_modal_visible()
 
-    @allure.title("Увеличение счетчика ингредиента при добавлении в заказ")
-    def test_ingredient_counter_increases(self, driver):
+    @allure.title("Увеличение счетчика ингредиента при добавлении")
+    def test_ingredient_counter_increase(self, driver):
         main_page = MainPage(driver)
 
         with allure.step("1. Открыть главную страницу"):
             main_page.open()
 
-        with allure.step("2. Получить начальное значение счетчика ингредиента"):
-            initial_count = main_page.get_ingredient_counter()
+        with allure.step("2. Получить начальное значение счетчика"):
+            initial_counter = main_page.get_ingredient_counter()
 
         with allure.step("3. Добавить ингредиент в конструктор"):
-            main_page.add_ingredient_to_constructor()
+            source = main_page.wait_until_visible(MainPageLocators.INGREDIENT_ITEM)
+            target = main_page.wait_until_visible(MainPageLocators.CONSTRUCTOR_AREA)
+            drag_and_drop(driver, source, target)
 
         with allure.step("4. Проверить увеличение счетчика"):
-            assert main_page.get_ingredient_counter() > initial_count
+            assert main_page.get_ingredient_counter() == initial_counter + 2
 
     @allure.title("Оформление заказа авторизованным пользователем")
-    def test_make_order_by_authenticated_user(self, driver, test_user):
-        register_page = RegisterPage(driver)
-        login_page = LoginPage(driver)
+    def test_make_order_authenticated(self, driver, authenticated_user):
         main_page = MainPage(driver)
 
-        with allure.step("1. Зарегистрировать нового пользователя"):
-            register_new_user(driver, test_user)
+        with allure.step("1. Открыть главную страницу"):
+            main_page.open()
 
-        with allure.step("2. Авторизоваться под созданным пользователем"):
-            login_user(driver, test_user["email"], test_user["password"])
+        with allure.step("2. Добавить ингредиент в конструктор"):
+            source = main_page.wait_until_visible(MainPageLocators.INGREDIENT_ITEM)
+            target = main_page.wait_until_visible(MainPageLocators.CONSTRUCTOR_AREA)
+            drag_and_drop(driver, source, target)
 
-        with allure.step("3. Добавить ингредиент в конструктор"):
-            main_page.add_ingredient_to_constructor()
-
-        with allure.step("4. Нажать кнопку 'Оформить заказ'"):
+        with allure.step("3. Оформить заказ"):
             order_number = main_page.make_order()
 
-        with allure.step("5. Проверить что появилось окно с номером заказа"):
-            assert order_number, "Номер заказа не отображается"
+        with allure.step("4. Проверить наличие номера заказа"):
+            assert order_number.isdigit(), "Номер заказа должен быть числом"
