@@ -13,3 +13,7 @@ class ProfilePageLocators:
     ORDER_HISTORY_SECTION = (By.XPATH, "//section[contains(@class, 'OrderHistory')]")
     ORDER_HISTORY_ITEM = (By.XPATH, "//div[contains(@class, 'OrderHistory_link')]")
     ORDER_HISTORY_NUMBER = (By.XPATH, ".//p[contains(@class, 'text_type_digits-default')]")
+    # локатор всех заказов (ссылок)
+    ORDERS = (By.CSS_SELECTOR, "a.OrderHistory_link__1iNby")
+    # локатор номера заказа внутри одного заказа
+    ORDER_NUMBER = (By.CSS_SELECTOR, "p.text_type_digits-default")

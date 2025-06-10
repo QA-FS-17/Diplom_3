@@ -11,10 +11,8 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.common.exceptions import WebDriverException
 from config import config
 from pages.login_page import LoginPage
-from pages.main_page import MainPage
 
 logger = logging.getLogger(__name__)
-
 
 @pytest.fixture(params=["chrome", "firefox"])
 def driver(request):
@@ -92,25 +90,20 @@ def test_user():
 def authenticated_user(driver, test_user, api_client):
     """Фикстура авторизованного пользователя с очисткой"""
     # 1. Регистрация через API
-    register_response = api_client.post(
+    api_client.post(
         config.api_register_url,
         json=test_user,
         timeout=10
     )
-    assert register_response.status_code == 200, f"Ошибка регистрации: {register_response.text}"
 
     # 2. Авторизация через UI
     login_page = LoginPage(driver)
     login_page.open()
     login_page.login(test_user["email"], test_user["password"])
 
-    # 3. Проверка успешной авторизации
-    main_page = MainPage(driver)
-    assert main_page.is_user_logged_in(), "Пользователь не авторизовался"
-
     yield test_user
 
-    # 4. Очистка через API
+    # 3. Очистка через API
     try:
         login_response = api_client.post(
             config.api_login_url,

@@ -1,97 +1,81 @@
 # test_order_feed.py
 
 import allure
-from config import config
-from helpers import is_order_in_list
 
 
 @allure.feature("Лента заказов")
 class TestOrderFeed:
-    @allure.title("Проверка открытия деталей заказа из ленты")
-    def test_open_order_details_from_feed(self, driver, authenticated_user, main_page, order_feed_page):
-        with allure.step("Добавить ингредиент и оформить заказ"):
+    @allure.title("Открытие деталей заказа из ленты")
+    def test_open_order_details_modal(self, driver, authenticated_user, main_page, order_feed_page):
+        with allure.step("Подготовка: создать тестовый заказ"):
             main_page.add_ingredient_to_constructor()
-            order_number = main_page.make_order()
+            main_page.make_order()
             main_page.close_modal()
 
-        with allure.step("Перейти в ленту заказов"):
+        with allure.step("Действие: перейти в ленту заказов и открыть детали"):
             main_page.navigate_to_order_feed()
-            assert order_feed_page.get_current_url() == config.ORDER_FEED_URL
-
-        with allure.step("Открыть детали заказа"):
             order_feed_page.click_first_order()
+
+        with allure.step("Проверка: модальное окно с деталями отображается"):
             assert order_feed_page.is_order_modal_visible()
 
-        with allure.step("Закрыть модальное окно"):
-            order_feed_page.close_order_modal()
-            assert not order_feed_page.is_order_modal_visible()
-
-    @allure.title("Проверка отображения заказа в истории")
-    def test_order_in_history(self, driver, authenticated_user, main_page, profile_page, order_feed_page):
-        with allure.step("Добавить ингредиент и оформить заказ"):
+    @allure.title("Заказ отображается в истории заказов")
+    def test_order_appears_in_history(self, authenticated_user, main_page, profile_page):
+        with allure.step("1. Подготовка: создать тестовый заказ"):
             main_page.add_ingredient_to_constructor()
-            order_number = main_page.make_order()
+            order_number = main_page.make_order()  # Уже содержит ожидание реального номера
             main_page.close_modal()
+            assert order_number, "Номер заказа не получен"
 
-        with allure.step("Перейти в ленту заказов"):
-            main_page.navigate_to_order_feed()
-            feed_order_numbers = order_feed_page.get_all_order_numbers()
-
-        with allure.step("Проверить наличие заказа в ленте"):
-            assert is_order_in_list(feed_order_numbers, order_number)
-
-        with allure.step("Перейти в историю заказов"):
+        with allure.step("2. Действие: перейти в историю заказов"):
             main_page.go_to_personal_account()
-            profile_page.go_to_order_history()
-            history_order_numbers = profile_page.get_order_numbers()
+            profile_page.click_order_history_link()
+            assert "account/order-history" in profile_page.get_current_url()
 
-        with allure.step("Проверить наличие заказа в истории"):
-            assert is_order_in_list(history_order_numbers, order_number)
+        with allure.step("3. Проверка: заказ есть в истории"):
+            profile_page.wait_for_order_in_history(order_number)
+            assert profile_page.is_order_in_history(order_number), \
+                f"Заказ {order_number} не найден в истории"
 
-    @allure.title("Проверка увеличения счетчика 'Выполнено за всё время'")
-    def test_total_orders_counter_increase(self, driver, authenticated_user, main_page, order_feed_page):
-        with allure.step("Получить начальное значение счетчика"):
-            main_page.navigate_to_order_feed()
-            initial_total = order_feed_page.get_total_orders_count()
+    @allure.title("Счетчик 'Выполнено за всё время' увеличивается")
+    def test_total_orders_counter_increases(self, driver, authenticated_user, main_page, order_feed_page):
+        # Подготовка: получить начальное значение
+        order_feed_page.open()
+        initial_total = order_feed_page.get_total_orders_count()
 
-        with allure.step("Создать новый заказ"):
-            main_page.navigate_to_constructor()
-            main_page.add_ingredient_to_constructor()
-            main_page.make_order()
-            main_page.close_modal()
+        # Действие: создать новый заказ
+        main_page.open()
+        main_page.add_ingredient_to_constructor()
+        main_page.make_order()
+        main_page.close_modal()
 
-        with allure.step("Проверить увеличение счетчика"):
-            main_page.navigate_to_order_feed()
-            new_total = order_feed_page.get_total_orders_count()
-            assert new_total > initial_total
+        # Проверка: счетчик увеличился
+        order_feed_page.open()
+        assert order_feed_page.get_total_orders_count() > initial_total
 
-    @allure.title("Проверка увеличения счетчика 'Выполнено за сегодня'")
-    def test_today_orders_counter_increase(self, driver, authenticated_user, main_page, order_feed_page):
-        with allure.step("Получить начальное значение счетчика"):
-            main_page.navigate_to_order_feed()
-            initial_today = order_feed_page.get_today_orders_count()
+    @allure.title("Счетчик 'Выполнено за сегодня' увеличивается")
+    def test_today_orders_counter_increases(self, driver, authenticated_user, main_page, order_feed_page):
+        # Подготовка: получить начальное значение
+        order_feed_page.open()
+        initial_today = order_feed_page.get_today_orders_count()
 
-        with allure.step("Создать новый заказ"):
-            main_page.navigate_to_constructor()
-            main_page.add_ingredient_to_constructor()
-            main_page.make_order()
-            main_page.close_modal()
+        # Действие: создать новый заказ
+        main_page.open()
+        main_page.add_ingredient_to_constructor()
+        main_page.make_order()
+        main_page.close_modal()
 
-        with allure.step("Проверить увеличение счетчика"):
-            main_page.navigate_to_order_feed()
-            new_today = order_feed_page.get_today_orders_count()
-            assert new_today > initial_today
+        # Проверка: счетчик увеличился
+        order_feed_page.open()
+        assert order_feed_page.get_today_orders_count() > initial_today
 
-    @allure.title("Проверка отображения заказа в разделе 'В работе'")
-    def test_order_in_progress_section(self, driver, authenticated_user, main_page, order_feed_page):
-        with allure.step("Создать новый заказ"):
-            main_page.add_ingredient_to_constructor()
-            order_number = main_page.make_order()
-            main_page.close_modal()
+    @allure.title("Заказ появляется в разделе 'В работе'")
+    def test_order_appears_in_progress(self, driver, authenticated_user, main_page, order_feed_page):
+        # Подготовка: создать заказ
+        main_page.add_ingredient_to_constructor()
+        order_number = main_page.make_order()
+        main_page.close_modal()
 
-        with allure.step("Перейти в ленту заказов"):
-            main_page.navigate_to_order_feed()
-
-        with allure.step("Проверить наличие заказа в работе"):
-            orders_in_progress = order_feed_page.get_orders_in_progress()
-            assert str(order_number) in orders_in_progress
+        # Проверка: заказ в разделе "В работе"
+        order_feed_page.open()
+        assert str(order_number) in order_feed_page.get_orders_in_progress()

@@ -19,16 +19,20 @@ logger = logging.getLogger(__name__)
 
 
 class BasePage:
-    def __init__(self, driver: WebDriver, url_suffix: str = ""):
+    def __init__(self, driver: WebDriver, url_suffix: str = "", timeout: int = None):
         self.driver = driver
         self.base_url = config.BASE_URL.rstrip('/')
         self.url = f"{self.base_url}/{url_suffix.lstrip('/')}"
-        self.default_timeout = config.DEFAULT_TIMEOUT
+        self.timeout = timeout or 10
 
     @property
     def wait(self) -> WebDriverWait:
         """Возвращает экземпляр WebDriverWait с default_timeout"""
-        return WebDriverWait(self.driver, self.default_timeout)
+        return WebDriverWait(self.driver, self.timeout)
+
+    def get_wait(self, timeout: float | None = None) -> WebDriverWait:
+        """Возвращает WebDriverWait с заданным таймаутом или default_timeout, если таймаут не указан"""
+        return WebDriverWait(self.driver, timeout or self.timeout)
 
     # ==================== Основные методы взаимодействия ====================
 
@@ -82,13 +86,23 @@ class BasePage:
             logger.error(f"Не удалось получить атрибут: {str(e)}")
             raise
 
+    @allure.step("Простой поиск одного элемента без ожидания")
+    def find_element(self, *locator: Tuple[str, str]) -> WebElement:
+        """Простой поиск одного элемента без ожидания"""
+        return self.driver.find_element(*locator)
+
+    @allure.step("Простой поиск нескольких элементов без ожидания")
+    def find_elements(self, *locator: Tuple[str, str]) -> list[WebElement]:
+        """Простой поиск нескольких элементов без ожидания"""
+        return self.driver.find_elements(*locator)
+
     # ==================== Методы ожидания ====================
 
     @allure.step("Ожидание выполнения условия")
     def wait_for_condition(self, condition: Callable[[], bool],
                            timeout: Optional[int] = None,
                            message: str = "") -> bool:
-        wait_timeout = timeout or self.default_timeout
+        wait_timeout = timeout or self.timeout
         try:
             return WebDriverWait(self.driver, wait_timeout).until(
                 lambda _: condition(),
@@ -124,7 +138,7 @@ class BasePage:
 
     @allure.step("Ожидание загрузки страницы")
     def wait_for_page_loaded(self, timeout: Optional[int] = None) -> None:
-        wait_timeout = timeout or self.default_timeout
+        wait_timeout = timeout or self.timeout
         try:
             WebDriverWait(self.driver, wait_timeout).until(
                 lambda d: d.execute_script("return document.readyState") == "complete"
@@ -157,13 +171,13 @@ class BasePage:
             message=f"Текст '{text}' не появился в элементе {locator}"
         )
 
+    # ==================== Проверки состояния ====================
+
     @allure.step("Проверка что URL содержит '{expected_part}'")
     def url_should_contain(self, expected_part: str) -> None:
         current_url = self.get_current_url()
         if expected_part.lower() not in current_url.lower():
             raise AssertionError(f"URL '{current_url}' не содержит '{expected_part}'")
-
-    # ==================== Проверки состояния ====================
 
     @allure.step("Проверка видимости элемента {locator}")
     def is_visible(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> bool:
@@ -193,7 +207,7 @@ class BasePage:
     def _wait_until(self, condition: Callable[[WebDriver], Any],
                     timeout: Optional[int] = None,
                     message: str = "") -> Any:
-        wait_timeout = timeout or self.default_timeout
+        wait_timeout = timeout or self.timeout
         try:
             return WebDriverWait(self.driver, wait_timeout).until(
                 condition,

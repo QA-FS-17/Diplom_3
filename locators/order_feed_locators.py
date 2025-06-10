@@ -12,4 +12,4 @@ class OrderFeedLocators:
     ORDERS_IN_PROGRESS = (By.XPATH, "//ul[contains(@class, 'OrderFeed_orderListReady')]/li")
     ORDER_MODAL = (By.XPATH, "//div[contains(@class, 'Modal_orderBox')]")
     MODAL_ORDER_NUMBER = (By.XPATH, "//h2[contains(@class, 'text_type_digits-large')]")
-    FIRST_ORDER_NUMBER = (By.XPATH, "(//p[contains(@class, 'OrderHistory_number__')])[1]")
+    FIRST_ORDER_NUMBER = (By.CSS_SELECTOR, "a.OrderHistory_link__1iNby")

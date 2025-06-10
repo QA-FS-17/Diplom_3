@@ -11,7 +11,6 @@ from locators.modal_locators import ModalLocators
 from locators.order_feed_locators import OrderFeedLocators
 from config import config
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -27,6 +26,12 @@ class OrderFeedPage(BasePage):
         """Открывает страницу ленты заказов и проверяет её загрузку."""
         super().open()
         self.wait_until_visible(self.locators.PAGE_HEADER)
+
+    @allure.step("Кликнуть на первый заказ в ленте")
+    def click_first_order(self) -> None:
+        """Кликает на первый заказ в ленте заказов"""
+        self.click(self.locators.FIRST_ORDER_NUMBER)
+        self.wait_until_visible(self.locators.ORDER_MODAL)
 
     @allure.step("Получить номер первого заказа")
     def get_first_order_number(self) -> str:
@@ -48,7 +53,7 @@ class OrderFeedPage(BasePage):
         """Закрывает модальное окно с деталями заказа."""
         if self.is_order_modal_visible():
             self.click(self.modal_locators.MODAL_CLOSE_BUTTON)
-            self.wait_until_not_visible(self.locators.ORDER_MODAL)
+            self.wait_until_not_visible(self.locators.ORDER_MODAL, timeout=10)
 
     @allure.step("Получить общее количество заказов")
     def get_total_orders_count(self) -> int:
@@ -74,6 +79,7 @@ class OrderFeedPage(BasePage):
         elements = self._find_elements(self.locators.ORDER_ITEM)
         return [self._get_order_number(element) for element in elements]
 
+    @allure.step("Извлекает номер заказа из элемента")
     def _get_order_number(self, order_element: WebElement) -> str:
         """Извлекает номер заказа из элемента."""
         try:
@@ -81,14 +87,16 @@ class OrderFeedPage(BasePage):
         except NoSuchElementException:
             return ""
 
+    @allure.step("Находит элементы по локатору или возвращает пустой список")
     def _find_elements(self, locator: Tuple[str, str]) -> List[WebElement]:
         """Находит элементы по локатору или возвращает пустой список."""
         try:
-            return self.driver.find_elements(*locator)
+            return super().find_elements(*locator)
         except NoSuchElementException:
             return []
 
     @staticmethod
+    @allure.step("Преобразует текст счетчика в число")
     def _parse_count_text(count_text: str) -> int:
         """Преобразует текст счетчика в число."""
         try:
@@ -96,3 +104,13 @@ class OrderFeedPage(BasePage):
         except ValueError as e:
             logger.error(f"Ошибка преобразования счетчика: {count_text}")
             raise ValueError(f"Некорректное значение счетчика: {count_text}") from e
+
+    @allure.step("Проверяет видимость заголовка страницы 'Лента заказов'")
+    def is_page_header_visible(self) -> bool:
+        """Проверяет видимость заголовка страницы 'Лента заказов'."""
+        return self.is_visible(self.locators.PAGE_HEADER)
+
+    @allure.step("Получить текущий URL")
+    def get_current_page_url(self) -> str:
+        """Возвращает текущий URL страницы."""
+        return self.get_current_url()

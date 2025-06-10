@@ -42,24 +42,27 @@ class MainPage(BasePage):
         self.wait_until_visible(self.modal_locators.MODAL_WINDOW)
 
     @allure.step("Проверить, что пользователь авторизован")
-    def is_user_logged_in(self) -> bool:
-        """Проверяет авторизован ли пользователь."""
+    def is_user_logged_in(self, timeout=None) -> bool:
+        """Проверяет, что пользователь авторизован."""
+        timeout = timeout or self.timeout
         try:
-            return self.is_visible(self.locators.CREATE_ORDER_BTN, timeout=5)
+            return self.is_visible(self.locators.CREATE_ORDER_BTN, timeout=timeout)
         except TimeoutException:
             return False
 
     @allure.step("Проверить состояние модального окна")
-    def is_modal_visible(self) -> bool:
+    def is_modal_visible(self, timeout=None) -> bool:
         """Проверяет видимость модального окна."""
-        return self.is_visible(self.modal_locators.MODAL_WINDOW)
+        timeout = timeout or self.timeout
+        return self.is_visible(self.modal_locators.MODAL_WINDOW, timeout=timeout)
 
     @allure.step("Закрыть модальное окно")
-    def close_modal(self) -> None:
-        """Закрывает модальное окно и проверяет его закрытие."""
-        if self.is_modal_visible():
-            self.click(self.modal_locators.MODAL_CLOSE_BUTTON)
-            self.wait_until_not_visible(self.modal_locators.MODAL_WINDOW)
+    def close_modal(self, timeout=None) -> None:
+        """Закрывает модальное окно."""
+        timeout = timeout or self.timeout
+        if self.is_modal_visible(timeout=timeout):
+            self.click(self.modal_locators.MODAL_CLOSE_BUTTON, timeout=timeout)
+            self.wait_until_not_visible(self.modal_locators.MODAL_WINDOW, timeout=timeout)
 
     @allure.step("Перейти в конструктор")
     def navigate_to_constructor(self) -> None:
@@ -76,10 +79,11 @@ class MainPage(BasePage):
         self.wait_until_url_contains("/feed")
 
     @allure.step("Оформить заказ")
-    def make_order(self) -> str:
-        """Оформляет заказ и возвращает номер заказа."""
-        self.click(self.locators.MAKE_ORDER_BTN)
-        return self.get_text(self.locators.ORDER_NUMBER)
+    def make_order(self, timeout=None) -> str:
+        """Оформляет заказ."""
+        timeout = timeout or self.timeout
+        self.click(self.locators.MAKE_ORDER_BTN, timeout=timeout)
+        return self.get_text(self.locators.ORDER_NUMBER, timeout=timeout)
 
     @allure.step("Добавить ингредиент в конструктор")
     def add_ingredient_to_constructor(self) -> None:
@@ -94,8 +98,8 @@ class MainPage(BasePage):
         self.click(self.locators.PERSONAL_ACCOUNT_BTN)
         self.wait_until_url_contains("account/profile")
 
-    @allure.step("Проверить счетчик ингредиента")
-    def get_ingredient_counter(self) -> int:
+    @allure.step("Получить значение счетчика ингредиента")
+    def get_ingredient_counter_value(self) -> int:
         """Возвращает значение счетчика ингредиента."""
         try:
             counter_text = self.get_text(self.locators.INGREDIENT_COUNTER)
@@ -107,3 +111,30 @@ class MainPage(BasePage):
     def is_order_button_visible(self) -> bool:
         """Проверяет видимость кнопки оформления заказа."""
         return self.is_visible(self.locators.MAKE_ORDER_BTN)
+
+    @allure.step("Перетащить ингредиент в конструктор (JavaScript)")
+    def drag_and_drop_ingredient(self) -> None:
+        """Перетаскивает ингредиент в конструктор, используя JavaScript."""
+        source = self.wait_until_visible(self.locators.INGREDIENT_ITEM)
+        target = self.wait_until_visible(self.locators.CONSTRUCTOR_AREA)
+        self._execute_drag_and_drop_js(source, target) # Используем метод из BasePage
+
+    @allure.step("Увеличить счетчик ингредиентов")
+    def increase_ingredient_counter(self) -> None:
+        """Увеличивает счетчик ингредиентов путем перетаскивания ингредиента."""
+        self.drag_and_drop_ingredient()
+
+    @allure.step("Получить текущий URL")
+    def get_current_page_url(self) -> str:
+        """Возвращает текущий URL страницы."""
+        return self.get_current_url()
+
+    @allure.step("Проверить видимость модального окна")
+    def is_ingredient_modal_visible(self) -> bool:
+        """Проверяет видимость модального окна с ингредиентом."""
+        return self.is_modal_visible()
+
+    @allure.step("Закрыть модальное окно ингредиента")
+    def close_ingredient_modal(self) -> None:
+        """Закрывает модальное окно с ингредиентом."""
+        self.close_modal()

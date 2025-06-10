@@ -44,6 +44,7 @@ class RegisterPage(BasePage):
 
     @allure.step("Проверить сообщение об ошибке")
     def is_error_message_displayed(self, expected_message: str) -> bool:
+        """Проверить сообщение об ошибке."""
         try:
             error_text = self.get_text(self.locators.ERROR_MESSAGE)
             return expected_message in error_text
@@ -64,3 +65,13 @@ class RegisterPage(BasePage):
     def click_constructor_link(self):
         """Кликает на ссылку 'Конструктор' в хедере"""
         self.click(self.locators.CONSTRUCTOR_LINK)
+
+    @allure.step("Проверить, что мы на странице регистрации")
+    def is_register_page(self) -> bool:
+        """Проверить, что мы на странице регистрации."""
+        return self.url_should_contain("register") and self.is_visible(self.locators.REGISTER_FORM)
+
+    @allure.step("Получить текущий URL")
+    def get_current_page_url(self) -> str:
+        """Возвращает текущий URL страницы."""
+        return self.get_current_url()
