@@ -1,6 +1,7 @@
 # helpers.py
 
 import allure
+import pytest
 import logging
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -16,7 +17,6 @@ from pages.login_page import LoginPage
 from pages.register_page import RegisterPage
 
 logger = logging.getLogger(__name__)
-
 
 @allure.step("Перетаскивание элемента на целевой элемент")
 def drag_and_drop(driver: WebDriver, source: WebElement, target: WebElement) -> None:
@@ -129,3 +129,19 @@ def full_register_and_login(driver: WebDriver, user_data: dict) -> None:
         login_user(driver, user_data["email"], user_data["password"])
     except (ValueError, LookupError, RuntimeError, TimeoutError) as e:
         raise RuntimeError(f"Ошибка в процессе регистрации/авторизации: {str(e)}") from e
+
+class CounterNotIncreasedError(Exception):
+    def __init__(self, initial_value: int, current_value: int):
+        self.initial_value = initial_value
+        self.current_value = current_value
+        super().__init__(f"Счетчик не увеличился. Было: {initial_value}, стало: {current_value}")
+
+@allure.step("Проверить увеличение счетчика")
+def verify_counter_increase(order_feed_page, initial_count: int) -> None:
+    """Вспомогательная функция для проверки увеличения счетчика"""
+    try:
+        order_feed_page.verify_counter_increase(initial_count)
+    except CounterNotIncreasedError as e:
+        pytest.fail(str(e))
+    except ValueError as e:
+        pytest.fail(f"Ошибка значения счетчика: {str(e)}")

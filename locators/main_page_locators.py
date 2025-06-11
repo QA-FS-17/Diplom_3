@@ -34,3 +34,5 @@ class MainPageLocators:
     PERSONAL_ACCOUNT_BTN = (By.XPATH, "//a[@href='/account']")
     MAKE_ORDER_BTN = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
     CREATE_ORDER_BTN = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")
+    ORDER_MODAL = (By.XPATH, "//div[contains(@class, 'Modal_modal')]")
+    PLACE_ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Оформить заказ')]")

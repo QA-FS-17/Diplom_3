@@ -6,7 +6,7 @@ import allure
 @allure.feature("Лента заказов")
 class TestOrderFeed:
     @allure.title("Открытие деталей заказа из ленты")
-    def test_open_order_details_modal(self, driver, authenticated_user, main_page, order_feed_page):
+    def test_open_order_details_modal(self, authenticated_user, main_page, order_feed_page):
         with allure.step("Подготовка: создать тестовый заказ"):
             main_page.add_ingredient_to_constructor()
             main_page.make_order()
@@ -21,61 +21,82 @@ class TestOrderFeed:
 
     @allure.title("Заказ отображается в истории заказов")
     def test_order_appears_in_history(self, authenticated_user, main_page, profile_page):
-        with allure.step("1. Подготовка: создать тестовый заказ"):
+        with allure.step("Подготовка: создать тестовый заказ"):
             main_page.add_ingredient_to_constructor()
-            order_number = main_page.make_order()  # Уже содержит ожидание реального номера
+            order_number = main_page.make_order()
             main_page.close_modal()
             assert order_number, "Номер заказа не получен"
 
-        with allure.step("2. Действие: перейти в историю заказов"):
+        with allure.step("Действие: перейти в историю заказов"):
             main_page.go_to_personal_account()
             profile_page.click_order_history_link()
-            assert "account/order-history" in profile_page.get_current_url()
 
-        with allure.step("3. Проверка: заказ есть в истории"):
-            profile_page.wait_for_order_in_history(order_number)
-            assert profile_page.is_order_in_history(order_number), \
+        with allure.step("Проверка: заказ есть в истории"):
+            assert profile_page.wait_for_order_in_history(order_number), \
                 f"Заказ {order_number} не найден в истории"
 
-    @allure.title("Счетчик 'Выполнено за всё время' увеличивается")
-    def test_total_orders_counter_increases(self, driver, authenticated_user, main_page, order_feed_page):
-        # Подготовка: получить начальное значение
-        order_feed_page.open()
-        initial_total = order_feed_page.get_total_orders_count()
+    @allure.title("Счетчик 'Выполнено за все время' увеличивается")
+    def test_total_orders_counter_increases(self, authenticated_user, main_page, order_feed_page):
+        with allure.step("1. Получить начальное значение счетчика 'Выполнено за все время'"):
+            order_feed_page.open()
+            initial_count = order_feed_page.get_validated_counter_value()
 
-        # Действие: создать новый заказ
-        main_page.open()
-        main_page.add_ingredient_to_constructor()
-        main_page.make_order()
-        main_page.close_modal()
+        with allure.step("2. Открыть страницу конструктора и убедиться в авторизации"):
+            main_page.open()
+            assert main_page.is_user_logged_in(), "Пользователь не авторизован или страница не готова"
 
-        # Проверка: счетчик увеличился
-        order_feed_page.open()
-        assert order_feed_page.get_total_orders_count() > initial_total
+        with allure.step("3. Создать тестовый заказ"):
+            order_number = main_page.create_test_order()
+            assert order_number, "Номер заказа не получен"
+
+        with allure.step(
+                "4. Обновить страницу ленты заказов и получить новое значение счетчика 'Выполнено за все время'"):
+            order_feed_page.open()  # Обновляем страницу, чтобы обновить счетчик
+            new_count = order_feed_page.get_validated_counter_value()
+
+        with allure.step("5. Проверить, что счетчик 'Выполнено за все время' увеличился"):
+            assert new_count > initial_count, f"Счетчик 'Выполнено за все время' не увеличился: \
+            было {initial_count}, стало {new_count}"
 
     @allure.title("Счетчик 'Выполнено за сегодня' увеличивается")
-    def test_today_orders_counter_increases(self, driver, authenticated_user, main_page, order_feed_page):
-        # Подготовка: получить начальное значение
-        order_feed_page.open()
-        initial_today = order_feed_page.get_today_orders_count()
+    def test_today_orders_counter_increases(self, authenticated_user, main_page, order_feed_page):
+        with allure.step("1. Получить начальное значение счетчика 'Выполнено за сегодня'"):
+            order_feed_page.open()
+            initial_today = order_feed_page.get_today_orders_count()
 
-        # Действие: создать новый заказ
-        main_page.open()
-        main_page.add_ingredient_to_constructor()
-        main_page.make_order()
-        main_page.close_modal()
+        with allure.step("2. Открыть страницу конструктора и убедиться в авторизации"):
+            main_page.open()
+            assert main_page.is_user_logged_in(), "Пользователь не авторизован или страница не готова"
 
-        # Проверка: счетчик увеличился
-        order_feed_page.open()
-        assert order_feed_page.get_today_orders_count() > initial_today
+        with allure.step("3. Создать новый заказ"):
+            order_number = main_page.create_test_order()
+            assert order_number, "Номер заказа не получен"
+
+        with allure.step(
+                "4. Обновить страницу ленты заказов и получить новое значение счетчика 'Выполнено за сегодня'"):
+            order_feed_page.open()
+            new_today = order_feed_page.get_today_orders_count()
+
+        with allure.step("5. Проверить, что счетчик 'Выполнено за сегодня' увеличился"):
+            assert new_today > initial_today, f"Счетчик 'Выполнено за сегодня' не увеличился: \
+            было {initial_today}, стало {new_today}"
 
     @allure.title("Заказ появляется в разделе 'В работе'")
-    def test_order_appears_in_progress(self, driver, authenticated_user, main_page, order_feed_page):
-        # Подготовка: создать заказ
-        main_page.add_ingredient_to_constructor()
-        order_number = main_page.make_order()
-        main_page.close_modal()
+    def test_order_appears_in_progress(self, authenticated_user, main_page, order_feed_page):
+        with allure.step("1. Авторизоваться и проверить успешный вход"):
+            main_page.open()
+            assert main_page.is_user_logged_in(), "Пользователь не авторизован или страница не готова"
 
-        # Проверка: заказ в разделе "В работе"
-        order_feed_page.open()
-        assert str(order_number) in order_feed_page.get_orders_in_progress()
+        with allure.step("2. Создать новый заказ и получить его номер"):
+            order_number = main_page.create_test_order()
+            assert order_number, "Номер заказа не получен"
+
+        with allure.step("3. Перейти на страницу 'Лента заказов'"):
+            order_feed_page.open()
+
+        with allure.step("4. Найти раздел 'В работе' и проверить наличие заказа"):
+            # Получаем список номеров заказов в разделе «В работе»
+            in_progress_orders = order_feed_page.get_orders_in_progress()
+
+            assert order_number in in_progress_orders, \
+                f"Заказ {order_number} не найден в разделе 'В работе'. Текущие заказы: {in_progress_orders}"

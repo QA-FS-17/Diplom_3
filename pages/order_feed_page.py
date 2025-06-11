@@ -9,6 +9,7 @@ from typing import List, Tuple
 from .base_page import BasePage
 from locators.modal_locators import ModalLocators
 from locators.order_feed_locators import OrderFeedLocators
+from helpers import CounterNotIncreasedError
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class OrderFeedPage(BasePage):
     def __init__(self, driver: WebDriver):
-        super().__init__(driver, config.ORDER_FEED_URL)
+        super().__init__(driver)
         self.locators = OrderFeedLocators()
         self.modal_locators = ModalLocators()
         self.modal_timeout = 5
@@ -24,6 +25,8 @@ class OrderFeedPage(BasePage):
     @allure.step("Открыть ленту заказов")
     def open(self) -> None:
         """Открывает страницу ленты заказов и проверяет её загрузку."""
+        self.url = config.ORDER_FEED_URL
+        self.logger.info(f"Открытие OrderFeedPage, URL: {self.url}")
         super().open()
         self.wait_until_visible(self.locators.PAGE_HEADER)
 
@@ -114,3 +117,71 @@ class OrderFeedPage(BasePage):
     def get_current_page_url(self) -> str:
         """Возвращает текущий URL страницы."""
         return self.get_current_url()
+
+    @allure.step("Получить заказы в работе")
+    def get_orders_in_progress(self) -> List[str]:
+        """Возвращает номера заказов в работе."""
+        elements = self._find_elements(self.locators.ORDERS_IN_PROGRESS)
+        orders = []
+        for element in elements:
+            text = element.text.strip()
+            # Пропускаем служебные сообщения
+            if text.lower().startswith("все текущие заказы готовы"):
+                continue
+            if text.startswith("#"):
+                text = text[1:]
+            if text.isdigit():
+                orders.append(text)
+        return orders
+
+    def wait_for_order_in_progress(self, order_number, timeout=15):
+        """Ожидает, что заказ появится в списке заказов "В работе"."""
+        def order_appeared():
+            return order_number in self.get_orders_in_progress()
+
+        self.wait_for_condition(order_appeared, timeout=timeout,
+                                message=f"Заказ {order_number} не появился в 'В работе'")
+
+    @allure.step("Проверить загрузку страницы ленты заказов")
+    def _verify_page_loaded(self) -> None:
+        """Проверяет, что страница ленты заказов загружена."""
+        self.wait_until_visible(self.locators.PAGE_HEADER)
+
+    @allure.step("Получить общее количество заказов")
+    def get_total_orders_count(self) -> int:
+        """Получает значение счетчика через безопасный метод"""
+        return self.get_numeric_value(self.locators.TOTAL_ORDERS_COUNT)
+
+    @allure.step("Ожидание увеличения счетчика")
+    def wait_for_total_increase(self, initial_value: int, timeout: int = 20) -> bool:
+        """Ожидает увеличения значения счетчика"""
+
+        def is_increased() -> bool:
+            try:
+                return self.get_total_orders_count() > initial_value
+            except ValueError:
+                return False
+
+        return self.wait_for_condition(
+            is_increased,
+            timeout=timeout,
+            message=f"Счетчик не превысил {initial_value} за {timeout} сек"
+        )
+
+    @allure.step("Получить валидированное значение счетчика")
+    def get_validated_counter_value(self) -> int:
+        self.open()
+        count = self.get_total_orders_count()
+
+        if not isinstance(count, int) or count < 0:
+            raise ValueError(f"Некорректное значение счетчика: {count}")
+
+        self.logger.info(f"Начальное значение счетчика: {count}")
+        return count
+
+    @allure.step("Проверить увеличение счетчика")
+    def verify_counter_increase(self, initial_value: int) -> None:
+        current = self.get_total_orders_count()
+        if current <= initial_value:
+            raise CounterNotIncreasedError(initial_value, current)
+        self.logger.info(f"Счетчик увеличился: {initial_value} → {current}")

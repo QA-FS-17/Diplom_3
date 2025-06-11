@@ -24,6 +24,7 @@ class BasePage:
         self.base_url = config.BASE_URL.rstrip('/')
         self.url = f"{self.base_url}/{url_suffix.lstrip('/')}"
         self.timeout = timeout or 10
+        self.logger = logging.getLogger(__name__)
 
     @property
     def wait(self) -> WebDriverWait:
@@ -38,7 +39,7 @@ class BasePage:
 
     def open(self):
         """Открывает страницу с корректным URL"""
-        logger.info(f"Opening URL: {self.url}")
+        self.logger.info(f"Opening URL: {self.url}")
         self.driver.get(self.url)
         self._verify_page_loaded()
 
@@ -95,6 +96,21 @@ class BasePage:
     def find_elements(self, *locator: Tuple[str, str]) -> list[WebElement]:
         """Простой поиск нескольких элементов без ожидания"""
         return self.driver.find_elements(*locator)
+
+    @allure.step("Получить числовое значение элемента")
+    def get_numeric_value(self, locator: Tuple[str, str]) -> int:
+        """
+        Безопасное получение числа из элемента
+        :raises ValueError: Если элемент не найден или текст не преобразуется в число
+        """
+        try:
+            text = self.get_text(locator)
+            try:
+                return int(text)
+            except ValueError as e:
+                raise ValueError(f"Невозможно преобразовать текст элемента в число: '{text}'") from e
+        except NoSuchElementException as e:
+            raise ValueError(f"Элемент {locator} не найден на странице") from e
 
     # ==================== Методы ожидания ====================
 
@@ -170,6 +186,25 @@ class BasePage:
             timeout=timeout,
             message=f"Текст '{text}' не появился в элементе {locator}"
         )
+
+    @allure.step("Дождаться изменения текста элемента")
+    def wait_until_text_changes(self, locator: tuple, old_text: str, timeout: int = 10) -> str:
+        def text_changed(driver):
+            try:
+                element = driver.find_element(*locator)
+                current_text = element.text
+                return current_text if current_text != old_text else False
+            except NoSuchElementException:
+                return False
+
+        try:
+            return self.get_wait(timeout).until(
+                text_changed,
+                message=f"Текст элемента {locator} не изменился с '{old_text}'"
+            )
+        except TimeoutException as e:
+            self.logger.error(f"Timeout waiting for text change: {str(e)}")
+            raise
 
     # ==================== Проверки состояния ====================
 
@@ -283,3 +318,53 @@ class BasePage:
             )
         except WebDriverException as e:
             logger.warning(f"Не удалось прокрутить к элементу: {str(e)}")
+
+    # ==================== Методы для динамических счетчиков ====================
+
+    @allure.step("Ожидание увеличения числового значения")
+    def wait_for_value_increase(self, get_value_func: Callable[[], int],
+                                initial_value: int,
+                                timeout: int = 20) -> int:
+        """
+        Ожидает увеличения числового значения, возвращает новое значение
+        :param get_value_func: Функция для получения текущего значения
+        :param initial_value: Начальное значение для сравнения
+        :param timeout: Максимальное время ожидания
+        """
+
+        def value_increased(_):
+            current_value = get_value_func()
+            return current_value if current_value > initial_value else False
+
+        try:
+            return self._wait_until(
+                value_increased,
+                timeout=timeout,
+                message=f"Значение не увеличилось от {initial_value} за {timeout} сек"
+            )
+        except TimeoutException:
+            final_value = get_value_func()
+            raise TimeoutError(
+                f"Счетчик не увеличился. Исходное: {initial_value}, текущее: {final_value}"
+            )
+
+    @allure.step("Ожидание изменения числового значения")
+    def wait_for_value_change(self, get_value_func: Callable[[], int],
+                              initial_value: int,
+                              timeout: int = 20) -> int:
+        """
+        Ожидает любого изменения числового значения
+        :param get_value_func: Функция для получения текущего значения
+        :param initial_value: Начальное значение для сравнения
+        :param timeout: Максимальное время ожидания
+        """
+
+        def value_changed(_):
+            current_value = get_value_func()
+            return current_value if current_value != initial_value else False
+
+        return self._wait_until(
+            value_changed,
+            timeout=timeout,
+            message=f"Значение не изменилось от {initial_value} за {timeout} сек"
+        )

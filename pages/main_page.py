@@ -79,11 +79,15 @@ class MainPage(BasePage):
         self.wait_until_url_contains("/feed")
 
     @allure.step("Оформить заказ")
-    def make_order(self, timeout=None) -> str:
+    def make_order(self) -> str:
         """Оформляет заказ."""
-        timeout = timeout or self.timeout
-        self.click(self.locators.MAKE_ORDER_BTN, timeout=timeout)
-        return self.get_text(self.locators.ORDER_NUMBER, timeout=timeout)
+        self.click(self.locators.MAKE_ORDER_BTN)
+        self.wait_until_visible(self.locators.ORDER_MODAL)
+        return self.wait_until_text_changes(
+            locator=self.locators.ORDER_NUMBER,
+            old_text="9999",
+            timeout=15
+        )
 
     @allure.step("Добавить ингредиент в конструктор")
     def add_ingredient_to_constructor(self) -> None:
@@ -138,3 +142,11 @@ class MainPage(BasePage):
     def close_ingredient_modal(self) -> None:
         """Закрывает модальное окно с ингредиентом."""
         self.close_modal()
+
+    @allure.step("Создает тестовый заказ и возвращает его номер")
+    def create_test_order(self) -> str:
+        """Создает тестовый заказ и возвращает его номер"""
+        self.add_ingredient_to_constructor()
+        order_number = self.make_order()
+        self.close_modal()
+        return order_number
