@@ -5,12 +5,17 @@ import random
 import uuid
 import pytest
 import requests
+import json
 from selenium import webdriver
 import undetected_chromedriver as uc
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    TimeoutException,
+    WebDriverException,
+    ElementNotInteractableException
+)
 from config import config
-from pages.login_page import LoginPage
 
 logger = logging.getLogger(__name__)
 
@@ -87,37 +92,112 @@ def test_user():
 
 
 @pytest.fixture
-def authenticated_user(driver, test_user, api_client):
-    """Фикстура авторизованного пользователя с очисткой"""
-    # 1. Регистрация через API
-    api_client.post(
-        config.api_register_url,
-        json=test_user,
-        timeout=10
-    )
+def authenticated_user(driver, test_user, api_client, login_page):
+    """Фикстура авторизованного пользователя с безопасной очисткой"""
+    access_token = None
+    refresh_token = None
 
-    # 2. Авторизация через UI
-    login_page = LoginPage(driver)
-    login_page.open()
-    login_page.login(test_user["email"], test_user["password"])
-
-    yield test_user
-
-    # 3. Очистка через API
+    # Регистрация пользователя
     try:
-        login_response = api_client.post(
-            config.api_login_url,
-            json={"email": test_user["email"], "password": test_user["password"]},
-            timeout=5
+        response = api_client.post(
+            f"{config.BASE_URL}{config.API_AUTH_REGISTER}",
+            json=test_user,
+            headers={"Content-Type": "application/json"},
+            timeout=10
         )
-        if login_response.status_code == 200:
-            api_client.delete(
-                config.api_user_url,
-                headers={"Authorization": f"Bearer {login_response.json()['accessToken']}"},
+        response.raise_for_status()
+        tokens = response.json()
+        access_token = tokens.get("accessToken")
+        refresh_token = tokens.get("refreshToken")
+
+        if not access_token:
+            pytest.fail("Токен доступа не получен при регистрации")
+
+    except requests.exceptions.HTTPError as e:
+        pytest.fail(f"HTTP ошибка при регистрации ({e.response.status_code}): {e.response.text}")
+    except requests.exceptions.ConnectionError as e:
+        pytest.fail(f"Ошибка подключения: {str(e)}")
+    except requests.exceptions.Timeout as e:
+        pytest.fail(f"Таймаут запроса: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Ошибка сети: {str(e)}")
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        pytest.fail(f"Ошибка формата ответа: {str(e)}")
+
+    # Авторизация через UI
+    try:
+        login_page.open()
+
+        email_field = login_page.wait_until_visible(login_page.locators.EMAIL_INPUT, timeout=20)
+        email_field.clear()
+        email_field.send_keys(test_user["email"])
+
+        password_field = login_page.wait_until_visible(login_page.locators.PASSWORD_INPUT, timeout=20)
+        password_field.clear()
+        password_field.send_keys(test_user["password"])
+
+        login_button = login_page.wait_until_clickable(login_page.locators.LOGIN_BUTTON, timeout=20)
+        login_button.click()
+
+        if not login_page.wait_until_url_contains(config.MAIN_PAGE_URL, timeout=25):
+            raise TimeoutException("Не произошёл переход на главную страницу")
+
+    except TimeoutException as e:
+        driver.save_screenshot("ui_login_timeout.png")
+        pytest.fail(f"Таймаут при авторизации: {str(e)}")
+    except NoSuchElementException as e:
+        driver.save_screenshot("ui_login_element_missing.png")
+        pytest.fail(f"Элемент не найден: {str(e)}")
+    except ElementNotInteractableException as e:
+        driver.save_screenshot("ui_login_element_not_interactable.png")
+        pytest.fail(f"Элемент недоступен: {str(e)}")
+    except WebDriverException as e:
+        driver.save_screenshot("ui_login_webdriver_error.png")
+        pytest.fail(f"Ошибка WebDriver: {str(e)}")
+
+    yield {
+        'user': test_user,
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }
+
+    # Безопасная очистка
+    if access_token:
+        # 1. Выход из системы (если есть refresh_token)
+        if refresh_token:
+            try:
+                logout_resp = api_client.post(
+                    f"{config.BASE_URL}{config.API_AUTH_LOGOUT}",
+                    json={"token": refresh_token},
+                    timeout=3
+                )
+                if logout_resp.status_code != 200:
+                    logger.warning(f"Неудачный логаут: {logout_resp.status_code}")
+            except requests.exceptions.HTTPError as e:
+                logger.warning(f"HTTP ошибка при логауте: {e.response.status_code}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Ошибка сети при логауте: {str(e)}")
+
+        # 2. Удаление пользователя
+        try:
+            del_resp = api_client.delete(
+                f"{config.BASE_URL}{config.API_AUTH_USER}",
+                headers={"Authorization": f"Bearer {access_token}"},
                 timeout=5
             )
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Ошибка при удалении пользователя: {str(e)}")
+
+            if del_resp.status_code == 403:
+                logger.warning("Удаление пользователя запрещено (403 Forbidden)")
+            elif del_resp.status_code != 200:
+                logger.warning(f"Неожиданный код ответа при удалении: {del_resp.status_code}")
+
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP ошибка удаления: {e.response.status_code} - {e.response.text}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка сети при удалении: {str(e)}")
+        except Exception as critical_error:
+            logger.critical(f"Критическая ошибка при очистке: {str(critical_error)}")
+            raise  # Пробрасываем критические ошибки
 
 
 @pytest.fixture(scope="module")

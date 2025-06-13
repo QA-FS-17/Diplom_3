@@ -1,1 +1,0 @@
-[31m[1mERROR   [0m pages.base_page:base_page.py:195 Timeout waiting for condition: Элемент ('xpath', "//p[text()='Выполнено за сегодня']/following-sibling::p") не стал видимым

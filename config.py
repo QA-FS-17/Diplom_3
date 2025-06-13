@@ -3,9 +3,33 @@
 class Config:
     """Конфигурация тестового окружения и URL приложения."""
 
+    @classmethod
+    def build_url(cls, url_part: str = "") -> str:
+        """
+        Строит полный URL на основе части пути.
+        Умеет обрабатывать:
+        - Пустые значения
+        - Относительные пути (login, register)
+        - Полные URL (если вдруг переданы)
+        - Удаляет лишние слеши
+        """
+        if not url_part:
+            return cls.BASE_URL.rstrip('/')
+
+        url_part = url_part.strip('/')
+
+        # Если уже передан полный URL, просто нормализуем его
+        if url_part.startswith('http'):
+            return url_part.rstrip('/')
+
+        # Собираем URL из базового и переданной части
+        return f"{cls.BASE_URL.rstrip('/')}/{url_part}"
+
+
     # Базовые настройки
     BASE_URL = "https://stellarburgers.nomoreparties.site"
-    DEFAULT_TIMEOUT = 10  # секунд
+    DEFAULT_TIMEOUT = 10
+    FIREFOX_TIMEOUT = 15
     BROWSER_WINDOW_SIZE = "1920x1080"
 
     # Основные URL страниц
@@ -27,22 +51,6 @@ class Config:
     API_ORDERS = f"{API_BASE}/orders"
     API_INGREDIENTS = f"{API_BASE}/ingredients"
 
-    # Полные API URL
-    @property
-    def api_register_url(self):
-        return self.BASE_URL + self.API_AUTH_REGISTER
-
-    @property
-    def api_login_url(self):
-        return self.BASE_URL + self.API_AUTH_LOGIN
-
-    @property
-    def api_user_url(self):
-        return self.BASE_URL + self.API_AUTH_USER
-
-    @property
-    def api_orders_url(self):
-        return self.BASE_URL + self.API_ORDERS
 
     # Тестовые данные пользователя
     class TestData:
@@ -56,8 +64,6 @@ class Config:
 
     # Настройки отчетов
     ALLURE_RESULTS_DIR = "allure-results"
-    SCREENSHOTS_DIR = "screenshots"
-
 
 # Экземпляр конфигурации для использования в проекте
 config = Config()

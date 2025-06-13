@@ -33,7 +33,8 @@ class TestUserProfile:
             profile_page.click_order_history_link()
 
         with allure.step("Проверка перехода на страницу истории"):
-            assert profile_page.get_current_url() == config.ORDER_HISTORY_URL, "URL не соответствует странице истории заказов"
+            assert profile_page.get_current_url() == config.ORDER_HISTORY_URL, \
+                "URL не соответствует странице истории заказов"
 
     @allure.title("Выход из аккаунта")
     def test_logout(self, driver, authenticated_user):

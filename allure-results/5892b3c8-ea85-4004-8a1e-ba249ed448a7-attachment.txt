@@ -1,0 +1,3 @@
+[1m[31mERROR   [0m pages.base_page:base_page.py:248 Timeout waiting for condition: Элемент ('xpath', "//p[contains(text(), 'В работе:')]/following-sibling::ul[contains(@class, 'OrderFeed_orderListReady')]//li[contains(text(), 'Все текущие заказы готовы!')]") не стал видимым
+[1m[31mERROR   [0m pages.base_page:base_page.py:248 Timeout waiting for condition: Элемент ('xpath', "//p[contains(text(), 'В работе:')]/following-sibling::ul[contains(@class, 'OrderFeed_orderListReady')]//li[contains(text(), 'Все текущие заказы готовы!')]") не стал видимым
+[33mWARNING [0m tests.conftest:conftest.py:190 Удаление пользователя запрещено (403 Forbidden)

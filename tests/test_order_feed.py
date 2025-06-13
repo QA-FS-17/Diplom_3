@@ -1,7 +1,9 @@
 # test_order_feed.py
 
 import allure
+import logging
 
+logger = logging.getLogger(__name__)
 
 @allure.feature("Лента заказов")
 class TestOrderFeed:
@@ -83,20 +85,18 @@ class TestOrderFeed:
 
     @allure.title("Заказ появляется в разделе 'В работе'")
     def test_order_appears_in_progress(self, authenticated_user, main_page, order_feed_page):
-        with allure.step("1. Авторизоваться и проверить успешный вход"):
-            main_page.open()
-            assert main_page.is_user_logged_in(), "Пользователь не авторизован или страница не готова"
-
-        with allure.step("2. Создать новый заказ и получить его номер"):
+        with allure.step("1. Создать новый тестовый заказ"):
             order_number = main_page.create_test_order()
-            assert order_number, "Номер заказа не получен"
+            allure.attach(f"Номер созданного заказа: {order_number}", name="Order Number")
+            assert order_number, "Не удалось получить номер заказа"
 
-        with allure.step("3. Перейти на страницу 'Лента заказов'"):
+        with allure.step("2. Перейти в ленту заказов"):
             order_feed_page.open()
 
-        with allure.step("4. Найти раздел 'В работе' и проверить наличие заказа"):
-            # Получаем список номеров заказов в разделе «В работе»
-            in_progress_orders = order_feed_page.get_orders_in_progress()
+        with allure.step("3. Проверить появление заказа в системе"):
+            assert order_feed_page.is_order_in_system(order_number), \
+                f"Заказ {order_number} не отображается в системе"
 
-            assert order_number in in_progress_orders, \
-                f"Заказ {order_number} не найден в разделе 'В работе'. Текущие заказы: {in_progress_orders}"
+        with allure.step("4. Проверить статус заказа"):
+            assert order_feed_page.is_order_in_progress(order_number), \
+                f"Заказ {order_number} не появился в разделе 'В работе'"

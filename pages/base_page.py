@@ -21,10 +21,9 @@ logger = logging.getLogger(__name__)
 class BasePage:
     def __init__(self, driver: WebDriver, url_suffix: str = "", timeout: int = None):
         self.driver = driver
-        self.base_url = config.BASE_URL.rstrip('/')
-        self.url = f"{self.base_url}/{url_suffix.lstrip('/')}"
         self.timeout = timeout or 10
         self.logger = logging.getLogger(__name__)
+        self.url = config.build_url(url_suffix)
 
     @property
     def wait(self) -> WebDriverWait:
@@ -64,14 +63,6 @@ class BasePage:
     def get_current_url(self) -> str:
         """Возвращает текущий URL страницы."""
         return self.driver.current_url
-
-    @allure.step("Приводит URL к единому формату")
-    def normalize_url(self, url: str) -> str:
-        """Приводит URL к единому формату (удаляет дубли и лишние слеши)"""
-        url = url.rstrip('/')
-        if url.startswith('http'):
-            return url
-        return f"{self.base_url.rstrip('/')}/{url.lstrip('/')}"
 
     @allure.step("Получение текста элемента {locator}")
     def get_text(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> str:
@@ -117,10 +108,15 @@ class BasePage:
     @allure.step("Ожидание выполнения условия")
     def wait_for_condition(self, condition: Callable[[], bool],
                            timeout: Optional[int] = None,
+                           poll_frequency: float = 0.5,  # Добавляем параметр с дефолтным значением
                            message: str = "") -> bool:
         wait_timeout = timeout or self.timeout
         try:
-            return WebDriverWait(self.driver, wait_timeout).until(
+            return WebDriverWait(
+                self.driver,
+                wait_timeout,
+                poll_frequency=poll_frequency  # Передаем параметр в WebDriverWait
+            ).until(
                 lambda _: condition(),
                 message=message or f"Условие не выполнено за {wait_timeout} секунд"
             )

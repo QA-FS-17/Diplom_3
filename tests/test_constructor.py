@@ -90,8 +90,7 @@ class TestConstructor:
             assert main_page.get_ingredient_counter_value() == initial_counter + 2
 
     @allure.title("Оформление заказа авторизованным пользователем")
-    def test_make_order_authenticated(self, driver, authenticated_user):
-        main_page = MainPage(driver)
+    def test_make_order_authenticated(self, driver, authenticated_user, main_page):
 
         with allure.step("1. Открыть главную страницу"):
             main_page.open()
