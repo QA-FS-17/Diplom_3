@@ -1,0 +1,1 @@
+[1m[31mERROR   [0m pages.base_page:base_page.py:248 Timeout waiting for condition: Элемент ('xpath', "//div[contains(@class, 'Modal_modal__container')]") не стал видимым
